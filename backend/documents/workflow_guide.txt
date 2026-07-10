@@ -1,0 +1,209 @@
+SIS WORKFLOW GUIDE FOR ISD AND NISD APPLICATIONS
+
+=== ISD WORKFLOW (Involving Sub-Division) ===
+
+Step 1: Application Submission
+- Applications can be submitted through CSC centers, Sub-Registrar offices, or directly by citizens
+- Application receives a unique tracking number (format: ISD/DISTRICT_CODE/YEAR/SEQUENCE)
+- All required documents must be uploaded at the time of submission
+
+Step 2: SIS Officer Assignment
+- Application is automatically assigned to the SIS officer based on jurisdiction (District/Taluk/Town/Ward/Block)
+- Officer receives notification within 24 hours
+- Application appears in officer's pending queue
+
+Step 3: SIS Field Visit
+- Officer must schedule field visit within 15 working days from application submission
+- Field visit is mandatory for all ISD applications
+- Officer verifies the survey number, boundaries, area measurements, and checks for encroachments
+- Officer takes photographs and GPS coordinates during the visit
+- Officer prepares preliminary field notes and sketch
+
+Step 4: Sketch Preparation by Survey Department (SD)
+- After field verification, SIS officer submits findings to Survey Department
+- SD prepares detailed survey sketch with new sub-division numbers
+- SD verifies area calculations: sum of all sub-divisions must equal original survey area
+- Sub-division numbering follows pattern: 145 → 145/1A, 145/1B, 145/2A, etc.
+- SD handoff typically takes 7-10 working days
+
+Step 5: Deputy Inspector Surveyor (DIS) Approval
+- DIS reviews the field report and survey sketch
+- DIS verifies compliance with survey rules and area calculations
+- DIS approves or rejects with reasons
+- Approval timeline: 5 working days
+
+Step 6: Digital Sign-off by Tahsildar
+- Approved applications move to Tahsildar for final digital signature
+- Tahsildar applies Digital Signature Certificate (DSC)
+- DSC is mandatory for all patta transfers
+- Timeline: 3 working days
+
+Step 7: Patta Transfer Order Generation
+- System generates patta transfer order with new sub-division details
+- Order includes previous owner name, new owner name, survey numbers, area details
+- Citizen can download patta transfer order from portal
+- Land records are updated in the revenue system
+
+Total Timeline: Approximately 30-35 working days from submission to completion
+
+=== NISD WORKFLOW (Not Involving Sub-Division) ===
+
+Step 1: Application Submission
+- Application submitted through CSC, Sub-Registrar, or citizen portal
+- Application number format: NISD/DISTRICT_CODE/YEAR/SEQUENCE
+- No new sub-divisions are created, only ownership transfer
+
+Step 2: SIS Officer Verification
+- SIS officer verifies documents: Sale Deed, EC (Encumbrance Certificate), Photo ID
+- Officer checks if survey number exists and area matches records
+- Officer verifies there are no pending disputes or litigation
+- No field visit required unless specific issues are flagged
+- Verification timeline: 5 working days
+
+Step 3: Deputy Tahsildar Review
+- Deputy Tahsildar reviews SIS officer's verification report
+- Checks for any revenue arrears or pending taxes
+- Confirms sale deed registration details
+- Timeline: 3 working days
+
+Step 4: Digital Signature Certificate (DSC) Application
+- Tahsildar applies DSC to patta transfer order
+- DSC validates the authenticity of the transfer
+- Timeline: 2 working days
+
+Step 5: Patta Transfer Completion
+- Patta ownership is transferred to new owner
+- Old owner's name is removed from records
+- New owner's name is updated in land records system
+
+Step 6: Land Records Update
+- Revenue system is updated with new ownership details
+- Patta number remains same, only owner changes
+- Property tax records are updated
+
+Step 7: Citizen Download
+- Citizen receives notification on mobile/email
+- Citizen can download updated patta from portal
+- Physical copy can be collected from Tahsildar office
+
+Total Timeline: Approximately 15-20 working days from submission to completion
+
+=== 15 WORKING DAY FIELD VISIT DEADLINE RULE ===
+
+- For ISD applications, field visit MUST be scheduled within 15 working days of application submission
+- If field visit is not completed within 15 days, application is marked as "overdue"
+- Overdue applications are flagged in officer's dashboard with red indicator
+- Officers receive escalation notifications for overdue applications
+- Overdue applications affect officer's performance metrics
+- Officers must provide justification for delays beyond 15 days
+
+=== REQUIRED DOCUMENTS FOR ISD ===
+
+1. Sale Deed
+   - Must be registered with Sub-Registrar
+   - Original scan copy required
+   - Must contain buyer and seller details, survey number, area
+
+2. Encumbrance Certificate (EC)
+   - Shows clear title for past 13 years
+   - Must be obtained from Sub-Registrar office
+   - Valid for 3 months from issue date
+
+3. Survey Sketch
+   - Existing survey sketch from revenue records
+   - Shows current survey number and boundaries
+   - Can be obtained from Tahsildar office
+
+4. Photo ID
+   - Aadhaar card (mandatory)
+   - Additional ID: Driving License, Voter ID, Passport (any one)
+   - Both buyer and seller photo IDs required
+
+5. Photographs
+   - Current photographs of the property
+   - Boundary stone photographs (if applicable)
+   - Minimum 4 photographs from different angles
+
+=== REQUIRED DOCUMENTS FOR NISD ===
+
+1. Sale Deed
+   - Registered with Sub-Registrar
+   - Original scan copy required
+   - Must match survey number in application
+
+2. Encumbrance Certificate (EC)
+   - Clear title for past 13 years
+   - Valid for 3 months from issue date
+
+3. Photo ID
+   - Aadhaar card of buyer and seller
+   - Additional ID proof (any one government ID)
+
+4. Patta Copy
+   - Current patta copy showing previous owner
+   - Can be obtained from Tahsildar office or online portal
+
+=== REJECTION REASONS AND RESUBMISSION PROCESS ===
+
+Common Rejection Reasons:
+
+1. Incomplete Documents
+   - Missing required documents (Sale Deed, EC, IDs)
+   - Invalid or expired documents
+   - Documents not properly attested
+
+2. Area Mismatch
+   - Area in Sale Deed does not match survey records
+   - Sub-division area calculations incorrect
+   - Total area of sub-divisions does not equal original survey area
+
+3. Encroachment Issues
+   - Encroachment detected during field visit
+   - Boundary disputes with neighboring properties
+   - Unauthorized construction on land
+
+4. Litigation Flag
+   - Ongoing court cases related to the property
+   - Disputed ownership claims
+   - Stay orders from court
+
+5. Revenue Arrears
+   - Pending property taxes
+   - Outstanding dues on the survey number
+   - Non-payment of water/electricity charges linked to property
+
+6. Invalid Survey Number
+   - Survey number does not exist in records
+   - Survey number belongs to different jurisdiction
+   - Survey number already sub-divided
+
+Resubmission Process:
+
+- Officer provides detailed rejection reason in system
+- Applicant receives notification with rejection reason
+- Applicant must rectify issues and resubmit application
+- Resubmitted applications get priority in queue
+- Same application number is retained with suffix (e.g., ISD/01/2024/001-R1)
+- Maximum 3 resubmissions allowed
+- After 3 rejections, applicant must file fresh application
+
+Timeline for Resubmission:
+- Applicant has 30 days to resubmit after rejection
+- If not resubmitted within 30 days, application is auto-closed
+- Closed applications can be reopened with written request to Tahsildar
+
+=== ESCALATION PROCESS ===
+
+Level 1 Escalation (15 days overdue):
+- Notification to SIS officer and DIS
+- Application marked with yellow flag
+
+Level 2 Escalation (30 days overdue):
+- Notification to Tahsildar
+- Application marked with red flag
+- Officer must provide written explanation
+
+Level 3 Escalation (45 days overdue):
+- Notification to District Revenue Officer (DRO)
+- Officer performance review triggered
+- Possible reassignment of application

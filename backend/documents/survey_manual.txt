@@ -1,0 +1,368 @@
+SURVEY NUMBER AND SUB-DIVISION MANUAL FOR SIS OFFICERS
+
+=== SURVEY NUMBER NAMING CONVENTION ===
+
+Survey Number Structure:
+- Survey numbers are unique identifiers for land parcels within a block
+- Format: Numeric (e.g., 145, 267, 1023) or Alphanumeric (e.g., 145A, 267B)
+- Each survey number belongs to exactly one block
+- Survey numbers cannot be duplicated within the same block
+- Survey numbers are permanent and do not change unless merged
+
+Survey Number Components:
+- Base Number: Primary identifier (e.g., 145)
+- Optional Suffix: Letter suffix for related parcels (e.g., 145A, 145B)
+- Block Association: Each survey number is linked to a specific block
+- Ward Association: Block is part of a ward
+- Town Association: Ward is part of a town
+
+Example Hierarchy:
+District: Chennai
+  ↳ Taluk: Mylapore
+    ↳ Town: T. Nagar
+      ↳ Ward: Ward 5
+        ↳ Block: Block 12
+          ↳ Survey Numbers: 145, 146, 147, 148A, 148B
+
+=== SUB-DIVISION NUMBERING RULES ===
+
+When to Create Sub-Division:
+- When a single survey number is partitioned into multiple parcels
+- When ownership of part of a survey number is transferred
+- When land is sold in parts requiring separate patta
+- When inheritance division requires separate land records
+
+Sub-Division Numbering Pattern:
+Original Survey: 145
+First Level Sub-Division: 145/1, 145/2, 145/3
+Second Level Sub-Division: 145/1A, 145/1B, 145/2A, 145/2B
+Third Level Sub-Division: 145/1A1, 145/1A2, 145/1B1
+
+Sub-Division Numbering Examples:
+
+Example 1: Simple Partition
+Survey 145 (1000 sq.m) divided into 2 parts
+Result: 145/1 (600 sq.m), 145/2 (400 sq.m)
+
+Example 2: Multiple Sub-Divisions
+Survey 267 (2000 sq.m) divided into 4 parts
+Result: 267/1 (500 sq.m), 267/2 (500 sq.m), 267/3 (600 sq.m), 267/4 (400 sq.m)
+
+Example 3: Further Sub-Division
+Survey 145/1 (600 sq.m) further divided into 2 parts
+Result: 145/1A (350 sq.m), 145/1B (250 sq.m)
+
+Example 4: Complex Sub-Division
+Survey 89 → 89/1, 89/2, 89/3
+Survey 89/1 → 89/1A, 89/1B
+Survey 89/1A → 89/1A1, 89/1A2
+
+Sub-Division Naming Rules:
+1. Use sequential numbers for first-level sub-division (1, 2, 3...)
+2. Use letters for second-level sub-division (A, B, C...)
+3. Use numbers again for third-level sub-division (1, 2, 3...)
+4. Always maintain parent reference in naming
+5. Do not skip numbers or letters in sequence
+6. Maximum sub-division depth: 3 levels (discouraged beyond this)
+
+=== AREA VALIDATION RULES ===
+
+Critical Rule: Sum of All Sub-Divisions Must Equal Original Survey Area
+
+Example Validation:
+Original Survey 145: 1000 sq.m
+Sub-Divisions:
+  - 145/1: 300 sq.m
+  - 145/2: 250 sq.m
+  - 145/3: 450 sq.m
+  Total: 300 + 250 + 450 = 1000 sq.m ✓ VALID
+
+Invalid Example:
+Original Survey 267: 2000 sq.m
+Sub-Divisions:
+  - 267/1: 800 sq.m
+  - 267/2: 900 sq.m
+  Total: 800 + 900 = 1700 sq.m ✗ INVALID (Missing 300 sq.m)
+
+Area Measurement Standards:
+- All areas recorded in square meters (sq.m)
+- Minimum measurable area: 1 sq.m
+- Maximum precision: 2 decimal places (e.g., 456.75 sq.m)
+- Survey measurements must be verified in field
+- GPS coordinates mandatory for area verification
+
+Area Calculation Tolerance:
+- Allowed variance: ±0.5% for survey measurements
+- Example: 1000 sq.m survey can have 995-1005 sq.m total
+- Variance beyond tolerance requires re-survey
+- DIS approval required for variance explanation
+
+Common Area Validation Errors:
+1. Missing Sub-Division: Not all parts of original survey accounted for
+2. Overlapping Sub-Divisions: Same area claimed by multiple sub-divisions
+3. Excess Area: Total sub-division area exceeds original survey
+4. Measurement Error: Field measurement differs from document
+
+=== ENCROACHMENT DETECTION PROCESS ===
+
+What is Encroachment:
+- Unauthorized occupation of survey land
+- Construction beyond approved boundaries
+- Encroachment by neighboring survey numbers
+- Public land or road encroachment onto private survey
+- Private survey encroachment onto public land/road
+
+Types of Encroachment:
+
+1. Boundary Encroachment
+   - Building or fence extends beyond survey boundary
+   - Detected during field visit with GPS measurement
+   - Requires boundary stone verification
+
+2. Full Encroachment
+   - Entire survey number occupied by unauthorized person
+   - Different person than patta holder
+   - Common in abandoned or disputed lands
+
+3. Partial Encroachment
+   - Part of survey number encroached
+   - Common in agricultural lands
+   - Detected through area measurement mismatch
+
+4. Public Space Encroachment
+   - Survey land encroaching onto road or public path
+   - Requires clearance from local body
+   - May require demolition or regularization
+
+Encroachment Detection Steps:
+
+Step 1: Document Review
+- Check survey sketch and boundary descriptions
+- Review previous field visit reports
+- Check for litigation history
+
+Step 2: Physical Verification
+- Visit survey location with GPS device
+- Mark survey corners using GPS coordinates
+- Measure actual boundaries
+
+Step 3: Boundary Stone Check
+- Locate boundary stones (if installed)
+- Verify boundary stone numbers
+- Check for moved or missing boundary stones
+
+Step 4: Neighbor Verification
+- Check neighboring survey boundaries
+- Identify common boundary points
+- Get neighbor acknowledgment if possible
+
+Step 5: Documentation
+- Take photographs from all angles
+- Record GPS coordinates of all corners
+- Measure encroached area
+- Identify encroaching party (if known)
+
+Step 6: Report Preparation
+- Prepare encroachment report with evidence
+- Include sketch showing encroachment
+- Recommend action: removal, regularization, or legal action
+
+Encroachment Flag in Application:
+- If encroachment detected, application is flagged
+- Flag prevents automatic approval
+- Requires DIS and Tahsildar review
+- May require legal opinion
+- Timeline extends by 15-30 days for resolution
+
+=== LITIGATION FLAG PROCESS ===
+
+What is Litigation:
+- Ongoing court case related to survey land
+- Ownership dispute between multiple parties
+- Boundary dispute with neighboring survey
+- Stay order from civil or revenue court
+- Criminal case involving land fraud or forgery
+
+Types of Litigation:
+
+1. Title Dispute
+   - Multiple parties claiming ownership
+   - Inherited property dispute
+   - Will contest
+   - Adverse possession claim
+
+2. Boundary Dispute
+   - Disagreement on survey boundaries
+   - Conflicting survey documents
+   - Encroachment dispute with neighbor
+
+3. Revenue Dispute
+   - Property tax assessment dispute
+   - Land classification dispute (agricultural vs. residential)
+   - Revenue recovery proceedings
+
+4. Criminal Litigation
+   - Land grab cases
+   - Document forgery
+   - Fraudulent sale deed
+   - Impersonation
+
+Litigation Detection Process:
+
+Step 1: EC Verification
+- Check Encumbrance Certificate for litigation remarks
+- Look for court case reference numbers
+- Check for stay orders or injunctions
+
+Step 2: Revenue Records Check
+- Verify if litigation flag exists in revenue system
+- Check Tahsildar remarks
+- Review previous application history
+
+Step 3: Field Inquiry
+- Ask current occupant about disputes
+- Check with neighbors about any known disputes
+- Verify if property is locked or abandoned (indicator of dispute)
+
+Step 4: Court Records Check
+- Cross-check with civil court case database
+- Check revenue court records
+- Verify if stay order is active
+
+Litigation Flag Actions:
+
+If Litigation Detected:
+1. Mark application with litigation flag
+2. Record litigation details: court name, case number, parties involved
+3. Application status changed to "On Hold - Litigation"
+4. Notify applicant about litigation issue
+5. Recommend legal consultation
+6. Application can proceed only after:
+   - Court stay is vacated
+   - Court judgment in applicant's favor
+   - Settlement agreement between parties
+
+Litigation Reference Format:
+- Court Name: "Madras High Court"
+- Case Number: "O.S. 145/2023"
+- Case Type: "Title Suit"
+- Status: "Pending" or "Disposed"
+- Stay Order: "Yes/No"
+
+Timeline Impact:
+- Applications with litigation are kept on hold
+- No timeline applies during litigation hold
+- Application resumes after litigation clearance
+- Fresh field visit may be required after clearance
+
+=== MERGE RULES: WHICH SUB-DIVISIONS CAN BE MERGED ===
+
+Survey Number Merging:
+- Combines multiple survey numbers or sub-divisions into single survey number
+- Used when adjacent land parcels are purchased by same owner
+- Simplifies land records and patta management
+
+Merge Eligibility Criteria:
+
+1. Common Ownership
+   - All survey numbers must have same owner
+   - Ownership must be sole (not joint) or all joint owners must agree
+   - Patta holder name must match across all surveys
+
+2. Geographic Adjacency
+   - Survey numbers must share common boundary
+   - Non-adjacent surveys cannot be merged
+   - At least one common boundary point required
+
+3. Same Jurisdiction
+   - All surveys must belong to same block
+   - Surveys from different blocks cannot be merged
+   - Surveys must be in same ward and town
+
+4. Same Land Classification
+   - All surveys must have same land type (agricultural, residential, commercial)
+   - Mixed land types cannot be merged
+   - Requires reclassification before merging
+
+5. No Encumbrance
+   - No mortgage, loan, or charge on any survey
+   - No litigation pending on any survey
+   - No encroachment on any survey
+
+6. Clear Title
+   - Encumbrance Certificate must be clear for all surveys
+   - No disputes or claims on any survey
+   - Revenue arrears must be cleared
+
+Merge Process:
+
+Step 1: Merge Application Submission
+- Application type: MERGE
+- List all survey numbers to be merged
+- Provide ownership proof for all surveys
+- Submit EC for all surveys
+
+Step 2: SIS Officer Verification
+- Verify common ownership
+- Check physical adjacency in field
+- Verify all surveys belong to same block
+- Check for any encumbrance or litigation
+- Prepare merge sketch showing combined area
+
+Step 3: Area Calculation
+- Calculate total area of merged survey
+- New Survey Area = Sum of all individual survey areas
+- Example: Survey 145 (500 sq.m) + Survey 146 (600 sq.m) = Merged Survey 145M (1100 sq.m)
+
+Step 4: New Survey Number Assignment
+- Merged survey gets new survey number
+- Usually based on lowest original survey number with 'M' suffix
+- Example: 145 + 146 + 147 → 145M
+- Alternative: Retain lowest number, mark others as "merged into 145"
+
+Step 5: DIS Approval
+- DIS reviews merge application
+- Verifies compliance with merge rules
+- Approves new survey number and area
+
+Step 6: Revenue Records Update
+- Old survey numbers marked as "Merged"
+- New survey number created in system
+- Single patta issued for merged survey
+- Property tax records consolidated
+
+Sub-Division Merge Examples:
+
+Example 1: Simple Sub-Division Merge
+Sub-Divisions: 145/1 (300 sq.m) + 145/2 (400 sq.m)
+Result: Reverts to Survey 145 (700 sq.m)
+Sub-divisions 145/1 and 145/2 marked as "Merged back to parent"
+
+Example 2: Multiple Sub-Division Merge
+Sub-Divisions: 267/1A (200 sq.m) + 267/1B (250 sq.m)
+Result: Reverts to Survey 267/1 (450 sq.m)
+Sub-divisions 267/1A and 267/1B marked as "Merged"
+
+Example 3: Cross-Survey Merge Not Allowed
+Sub-Divisions: 145/1 (300 sq.m) + 267/1 (400 sq.m)
+Result: NOT ALLOWED - Different parent survey numbers
+Recommendation: First merge back to parent, then merge parent surveys
+
+Merge Restrictions:
+
+Cannot Merge:
+1. Surveys with different owners
+2. Non-adjacent surveys
+3. Surveys from different blocks
+4. Surveys with pending litigation
+5. Surveys with active mortgages
+6. Surveys with different land classification
+7. Surveys with encroachment issues
+8. Surveys where one has sub-divisions still active
+
+Timeline for Merge Application:
+- SIS Verification: 10 working days
+- Field Visit: Mandatory within 15 days
+- DIS Approval: 5 working days
+- Revenue Update: 3 working days
+- Total: Approximately 25-30 working days

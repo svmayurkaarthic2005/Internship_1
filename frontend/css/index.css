@@ -1,0 +1,39 @@
+/* ========== CSS INDEX - Import Order ========== */
+/* This file documents the correct import order for all stylesheets */
+
+/* 1. Design System Variables (Must be first!) */
+@import url('variables.css');
+
+/* 2. Global Styles & Resets */
+@import url('global.css');
+
+/* 3. Animations & Keyframes */
+@import url('animations.css');
+
+/* 4. Reusable Components */
+@import url('components.css');
+
+/* 5. Page-Specific Styles */
+/* For Login Page: */
+@import url('login.css');
+
+/* For Chatbot Page: */
+@import url('chatbot.css');
+
+/* 6. Responsive Design (Always last!) */
+@import url('responsive.css');
+
+/*
+ * NOTE: Do NOT import index.css in HTML files
+ * Instead, import the individual files in your HTML head in this order:
+ * 
+ * <link rel="stylesheet" href="css/variables.css">
+ * <link rel="stylesheet" href="css/global.css">
+ * <link rel="stylesheet" href="css/animations.css">
+ * <link rel="stylesheet" href="css/components.css">
+ * <link rel="stylesheet" href="css/chatbot.css">
+ * <link rel="stylesheet" href="css/responsive.css">
+ * 
+ * This allows browsers to cache individual files and gives you
+ * better control over CSS specificity and load order.
+ */

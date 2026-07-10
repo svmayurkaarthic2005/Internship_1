@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SIS AI Assistant - Tamil Nadu</title>
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>💬</text></svg>">
+    
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    
+    <!-- Stylesheets - Modular CSS -->
+    <link rel="stylesheet" href="css/variables.css">
+    <link rel="stylesheet" href="css/global.css">
+    <link rel="stylesheet" href="css/animations.css">
+    <link rel="stylesheet" href="css/components.css">
+    <link rel="stylesheet" href="css/chatbot.css">
+    <link rel="stylesheet" href="css/responsive.css">
+    <link rel="stylesheet" href="css/table_styles.css">
+</head>
+<body class="chatbot-page">
+    <div class="chat-main-container-new">
+        <!-- Header -->
+        <header class="chat-header-new">
+            <div class="header-left-new">
+                <div class="bot-avatar-container-new">
+                    <i data-lucide="bot" class="bot-icon-new"></i>
+                </div>
+                <div class="header-title-group-new">
+                    <h1 class="header-title-new">Sub Inspector Surveyor AI Assistant</h1>
+                    <div class="status-indicator-new">
+                        <span class="status-dot-new"></span>
+                        <span class="status-text-new">Online</span>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Keep hidden elements for JS compatibility -->
+            <div style="display: none;">
+                <span id="officerName"></span>
+                <span id="employeeId"></span>
+                <span id="officerCardName"></span>
+                <span id="officerJurisdiction"></span>
+                <span id="officerInitials"></span>
+                <span id="officerAvatar"></span>
+                <div id="quickSuggestions"></div>
+            </div>
+
+            <div class="header-right-new">
+                <button class="icon-btn-new logout-btn-new" id="logoutBtn" aria-label="Logout">
+                    <i data-lucide="log-out" class="icon-new"></i>
+                    <span>Logout</span>
+                </button>
+            </div>
+        </header>
+        
+        <!-- Chat Area -->
+        <main class="chat-main-new">
+            <!-- Messages Container -->
+            <div class="chat-messages-new" id="chatMessages" role="log" aria-live="polite" aria-atomic="false">
+                <div class="date-separator-new">
+                    <span>Today</span>
+                </div>
+                <!-- Messages will be appended here -->
+            </div>
+            
+            <!-- Input Area -->
+            <div class="chat-input-area-new">
+                <div class="input-container-new">
+                    <textarea 
+                        id="messageInput" 
+                        class="message-input-new" 
+                        placeholder="Ask about survey numbers, applications, ownership, documents, or workflow..."
+                        rows="1"
+                        maxlength="1000"
+                        aria-label="Message input"
+                    ></textarea>
+                    <div class="input-actions-new">
+                        <button class="btn-send-new" id="sendBtn" disabled aria-label="Send message">
+                            <i data-lucide="send" class="send-icon-new"></i>
+                        </button>
+                        <button class="btn-icon-action-new" aria-label="Voice input">
+                            <i data-lucide="mic" class="mic-icon-new"></i>
+                        </button>
+                        <button class="btn-icon-action-new" aria-label="Attach file">
+                            <i data-lucide="paperclip" class="attach-icon-new"></i>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+    
+    <!-- Toast Container -->
+    <div class="toast-container" id="toastContainer"></div>
+    
+    <!-- JavaScript - Voice Recording -->
+    <script src="js/voiceRecorder.js"></script>
+    <script src="js/speechAPI.js"></script>
+    <script src="js/chatStorage.js"></script>
+    <script src="js/dataTable.js"></script>
+    <script src="js/table_renderer.js"></script>
+    <script src="js/chat.js"></script>
+    <script>
+        lucide.createIcons();
+    </script>
+</body>
+</html>

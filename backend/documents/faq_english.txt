@@ -1,0 +1,219 @@
+SIS CHATBOT FAQ - ENGLISH
+
+=== SURVEY NUMBER MERGING ===
+
+Q: Which survey numbers and sub-divisions are included in this merge application?
+A: You can check the merge application details which will list all survey numbers and their sub-divisions being merged, for example Survey No. 145 with sub-divisions 145/1A, 145/1B and 145/1C.
+
+Q: List the owners of all sub-divisions under a specific survey number.
+A: The system will show ownership details for each sub-division, displaying the owner name associated with each sub-division like Survey No. 145/1 - Ramesh Kumar, Survey No. 145/2 - Lakshmi Devi.
+
+Q: Show pending applications on these sub-divisions.
+A: The system checks for any pending patta transfer or other applications on the sub-divisions involved in the merge and alerts if any applications are pending.
+
+Q: How is invalid merged geometry detected?
+A: The system validates that merged parcels satisfy all validation checks including boundary continuity, area calculations, and adjacency requirements. If no issues are detected, the merge can proceed.
+
+Q: How much land is included in this merge application?
+A: The total land area is calculated by summing all sub-divisions being merged, for example total area of 1,950 sq.m from three sub-divisions.
+
+Q: Show the area of each selected survey number.
+A: Each sub-division's area is displayed individually, for example 145/1A - 600 sq.m, 145/1B - 700 sq.m, 145/1C - 650 sq.m.
+
+=== APPLICATION INTAKE & CLASSIFICATION ===
+
+Q: Is this application NISD or ISD?
+A: The system determines if an application is ISD (Involving Sub-Division) when it declares sub-division into multiple plots, or NISD (Not Involving Sub-Division) for simple patta transfers without creating new sub-divisions.
+
+Q: Does this application have all required documents before scheduling a visit?
+A: The system checks for all required documents and lists any missing documents such as Sale Deed, EC, Survey Sketch, or Photo IDs that must be uploaded before scheduling the field visit.
+
+Q: Is the sale deed number on this application actually registered with the Sub-Registrar?
+A: The system verifies if the deed number matches the Sub-Registrar's registered index. If no match is found, the application is flagged to contact the Sub-Registrar's office before proceeding.
+
+Q: Is there a pending court application or litigation flag on this survey number?
+A: The system checks for any litigation flags or court case references on the survey number. If litigation is detected, it's recommended to confirm with the Tahsildar before proceeding with the field visit.
+
+Q: Who submitted this application - CSC, citizen directly, or via Sub-Registrar referral?
+A: The application record shows the submission channel (CSC with location, citizen portal, or Sub-Registrar referral) along with the submission date.
+
+Q: Is the applicant the sole owner, or are there joint owners listed?
+A: The system displays the number of joint owners and their names. All joint owner signatures are required at the field visit.
+
+Q: What is the declared reason for the subdivision?
+A: Applications include declared reasons such as sale, inheritance, partition among legal heirs, or gift deed for the sub-division request.
+
+=== JURISDICTION & LOCATION DETAILS ===
+
+Q: Show the survey and sub-division numbers for this application.
+A: Each application displays its associated survey number and sub-division number, for example Survey No. 145, Sub-division No. 145/2A.
+
+Q: Show the jurisdiction summary for my assigned area.
+A: Your jurisdiction summary includes the count of Taluks, Blocks, Wards, and Survey Numbers assigned to you for managing applications.
+
+Q: Retrieve all survey numbers and their sub-divisions within a specific Ward and Block.
+A: The system lists all survey numbers in the specified ward and block, showing which surveys have sub-divisions and their sub-division numbers, for example Survey No. 45 with sub-divisions 45/1, 45/2, 45/3.
+
+Q: Retrieve applications pending within the same ward.
+A: You can view the count and list of all applications currently pending in any specific ward.
+
+Q: Which district and taluk does a sub-division belong to?
+A: The system shows the complete jurisdiction chain including District name and Taluk name for any survey number or sub-division.
+
+Q: Show all pending applications in this block/ward/taluk/town.
+A: You can filter pending applications by any jurisdiction level - block, ward, taluk, or town - to see the count and list of pending applications.
+
+=== SURVEY NUMBERING & JURISDICTION ===
+
+Q: What's the full jurisdiction chain for this survey number?
+A: The system displays the complete hierarchy: District name, Taluk name, Block number, and Ward number for any survey number.
+
+Q: How many survey numbers exist under a specific block?
+A: The system shows the total count of survey numbers recorded under any specified block within a taluk.
+
+Q: How many sub-divisions already exist under a survey number?
+A: You can see the count of active sub-divisions with their numbers (like XXX/1, XXX/2) and identify the highest assigned sub-division number.
+
+Q: Which block does a ward belong to?
+A: The system shows the block association for any specified ward number.
+
+Q: What's the next available sub-division number for a survey number?
+A: Based on the highest existing sub-division number, the system suggests the next available sub-division number in sequence.
+
+Q: Validate the district code against the assigned survey jurisdiction.
+A: The system checks if the district code matches the survey jurisdiction. If a mismatch is detected, the application should be forwarded to the appropriate district for processing.
+
+=== FIELD VISIT SCHEDULING ===
+
+Q: What field visit date did I select for this application?
+A: The system confirms the selected field visit date for each application number.
+
+Q: Display nearby pending applications for field inspection.
+A: You can see applications located within the same Ward and Block to optimize field visit routing.
+
+Q: How many applications do I already have scheduled in this taluk this week?
+A: The system shows the count and list of applications already scheduled for field visits in a specific taluk during the current week.
+
+Q: Check schedule availability for rescheduling this field visit.
+A: The system checks available dates when a field visit can be rescheduled without conflicts.
+
+Q: Is this application already past the 15-working-day field visit deadline?
+A: The system calculates if an application is overdue (showing how many days past the 15-day deadline) or still within the window (showing which day of 15 it's on). Overdue applications should be escalated or scheduled immediately.
+
+Q: Identify overdue field visits pending inspection.
+A: You can view all applications that have exceeded their scheduled inspection date.
+
+Q: Display unassigned field visits awaiting scheduling.
+A: The system lists applications that have not yet been assigned an inspection date.
+
+Q: Retrieve recently rescheduled field visits.
+A: You can see which field visits were rescheduled during the last 7 days.
+
+Q: Identify scheduling conflicts in the current inspection calendar.
+A: The system detects if two field visits overlap on the same date and time, alerting you to resolve the conflict.
+
+=== ISD PROCESSING ===
+
+Q: How many sub-divisions are proposed under this survey number?
+A: The system shows the count of sub-divisions proposed under a specific survey number in the ISD application.
+
+Q: Retrieve application status by sub-division.
+A: You can see the status of each sub-division individually, for example 145/1A - Approved, 145/1B - Approved, 145/1C - Approved, 145/1D - Pending.
+
+Q: How many patta transfer orders will be generated after approval?
+A: The system calculates the number of patta transfer orders based on the approved sub-divisions, one order per sub-division.
+
+Q: Display the proposed sub-divisions in this application.
+A: All proposed sub-divisions are listed with their details from the application.
+
+Q: Retrieve the assigned sub-division numbers for the approved application.
+A: Sub-division numbers become available after the Survey Department approves the subdivision sketch.
+
+Q: Compare the original survey area with the total sub-division area.
+A: The system validates that the sum of all sub-division areas equals the original survey area, for example Original: 2,400 sq.m, Total sub-divisions: 2,400 sq.m (validation passed).
+
+Q: Show the latest action taken for each sub-division.
+A: The system displays the current status and latest action for each sub-division, showing which are approved and which are pending with SD or other stages.
+
+=== HANDOFF TO SENIOR DRAUGHTSMAN (SD) ===
+
+Q: What additional information is SD asking for on this application?
+A: The system shows any documents or clarifications that SD has requested for the application.
+
+Q: Did SD receive the encroachment flag I noted during the field visit?
+A: Encroachment flags set during field visits are visible in SD's view of the application file.
+
+Q: Is my field data complete enough for SD to prepare the sketch without follow-up questions?
+A: The system validates if all required fields are filled. If anything is missing, it recommends completing those fields before submission to SD.
+
+Q: Has this application been forwarded to SD?
+A: The system shows if and when the application was forwarded to the Survey Department, or indicates if it's still pending SIS verification.
+
+Q: Show the remarks recorded by SD.
+A: You can view all remarks and notes recorded by the Senior Draughtsman on the application.
+
+=== REJECTION & FEEDBACK LOOP ===
+
+Q: Why was this application rejected by SD?
+A: The system logs the specific rejection reason from SD, such as "boundary point 2 measurement inconsistent with adjoining survey no." or other specific issues.
+
+Q: Why did DIS reject this application?
+A: Rejection reasons from DIS are logged, common reasons include area mismatch between the original survey and proposed sub-divisions, or violations of survey rules.
+
+Q: What exactly was flagged - measurement mismatch, missing signature, or something else?
+A: The system shows the specific flag pulled directly from the rejection note, indicating exactly what issue needs to be addressed.
+
+Q: What's the average number of rejections per ISD application in this taluk?
+A: The system can calculate statistics showing the average number of rejections per ISD application in a specific taluk over a specified period.
+
+=== STATUS TRACKING ===
+
+Q: Where is this application right now - with SD, DIS, or Tahsildar?
+A: The system shows the current stage (SD, DIS, or Tahsildar) along with the date when it reached that stage.
+
+Q: How long has this application been sitting at its current stage?
+A: The system calculates the number of days the application has been at the current stage.
+
+Q: How many of my submitted applications are currently stuck at DIS approval?
+A: You can see the count and list of application IDs currently at the DIS stage.
+
+Q: Which of my applications have been pending longest without movement?
+A: The system identifies the application with the longest pending time, showing the application ID, number of days pending, and current stage.
+
+Q: Has the Tahsildar signed off on this application yet?
+A: The system shows if the Tahsildar has signed with the date, or indicates if it's still pending in the Tahsildar's queue with the date it arrived.
+
+Q: Has the land record been updated for this application yet?
+A: The system indicates if land records have been updated with the date, or shows that it's awaiting Tahsildar sign-off first.
+
+Q: What's the overall completion percentage of my assigned applications this month?
+A: The system calculates the percentage and shows how many of your assigned applications were completed this month.
+
+Q: Which applications are approaching the escalation threshold this week?
+A: The system identifies applications that will cross the escalation day threshold within the next 7 days.
+
+=== WORKLOAD & ADMINISTRATIVE ===
+
+Q: How many active applications am I currently assigned across all taluks?
+A: The system shows your total active applications broken down by taluk, for example 25 in Taluk A, 18 in Taluk B.
+
+Q: Which of my pending applications are highest priority this week?
+A: The system identifies applications flagged for approaching deadlines or prior escalations as highest priority.
+
+Q: How many applications were assigned to me today?
+A: You can see the count of applications newly assigned to you today.
+
+Q: Which applications require immediate action today?
+A: The system lists applications requiring immediate action based on pending deadlines or escalation status.
+
+Q: How many applications are awaiting my field visit?
+A: The system shows the count of applications waiting for field inspection to be scheduled or conducted.
+
+Q: Show my workload by application type.
+A: Your workload is broken down by type, for example ISD - 18 applications, NISD - 22 applications, Merge - 6 applications.
+
+Q: Show my application completion rate for this month.
+A: The system calculates your completion rate as a percentage, showing how many of your assigned applications were completed out of the total assigned.
+
+Q: Which applications have been pending the longest?
+A: The system identifies applications that have been pending for the most number of days with their application numbers.
