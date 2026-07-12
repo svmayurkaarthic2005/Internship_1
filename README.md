@@ -35,8 +35,8 @@ A bilingual (Tamil/English) AI-powered chatbot system designed to assist Sub Ins
 - **Framework**: FastAPI (Python)
 - **Database**: PostgreSQL with asyncpg
 - **Vector Store**: ChromaDB for semantic search
-- **Embeddings**: Sentence Transformers (all-MiniLM-L6-v2)
-- **LLM Integration**: OpenAI-compatible API (Groq)
+- **LLM**: Ollama with Llama 3.1:8b model
+- **Embeddings**: Ollama nomic-embed-text
 - **Authentication**: JWT-based auth system
 
 ### Frontend
@@ -113,6 +113,7 @@ nic_internship/
 ### Prerequisites
 - Python 3.8 or higher
 - PostgreSQL 12 or higher
+- Ollama (with Llama 3.1:8b model installed)
 - Git
 
 ### Setup Steps
@@ -134,31 +135,43 @@ nic_internship/
    pip install -r requirements.txt
    ```
 
-4. **Configure environment**
+4. **Install and setup Ollama**
+   ```bash
+   # Download and install Ollama from https://ollama.ai
+   
+   # Pull the required models
+   ollama pull llama3.1:8b
+   ollama pull nomic-embed-text
+   
+   # Verify Ollama is running
+   # Ollama should be running on http://localhost:11434
+   ```
+
+5. **Configure environment**
    ```bash
    copy .env.example .env
    # Edit .env with your configuration
    ```
 
-5. **Setup database**
+6. **Setup database**
    ```bash
    python create_database.py
    python backend/seed.py
    ```
 
-6. **Ingest documents into vector store**
+7. **Ingest documents into vector store**
    ```bash
    python backend/ingest.py
    ```
 
-7. **Start the backend**
+8. **Start the backend**
    ```bash
    start_backend.bat
    # Or manually:
    uvicorn backend.main:app --reload --host 0.0.0.0 --port 8000
    ```
 
-8. **Open frontend**
+9. **Open frontend**
    - Navigate to `http://localhost:8000/frontend/login.html`
    - Default credentials: admin / admin123
 
@@ -169,22 +182,66 @@ nic_internship/
 ```env
 # Database
 DATABASE_URL=postgresql+asyncpg://user:password@localhost:5432/dbname
+SYNC_DATABASE_URL=postgresql://user:password@localhost:5432/dbname
 
-# API Keys
-GROQ_API_KEY=your_groq_api_key_here
+# Ollama Configuration
+OLLAMA_BASE_URL=http://localhost:11434
+LLM_MODEL=llama3.1:8b
+EMBEDDING_MODEL=nomic-embed-text
 
 # Security
 SECRET_KEY=your_secret_key_here
 ALGORITHM=HS256
-ACCESS_TOKEN_EXPIRE_MINUTES=30
+ACCESS_TOKEN_EXPIRE_MINUTES=480
 
 # Vector Store
 CHROMA_PERSIST_DIR=./vectorstore
-EMBEDDING_MODEL=sentence-transformers/all-MiniLM-L6-v2
 
-# Application
-API_URL=http://localhost:8000
+# CORS Origins
+CORS_ORIGINS=["http://localhost:3000","http://127.0.0.1:5500","http://localhost:5500","http://localhost:8080"]
+
+# Environment
+ENVIRONMENT=development
 ```
+
+### Ollama Configuration
+
+The system uses **Ollama** as the LLM backend with **Llama 3.1:8b** model for generation and **nomic-embed-text** for embeddings.
+
+**Ollama Installation**:
+- Download from: https://ollama.ai
+- Default port: 11434
+- Models are stored locally (no external API costs)
+
+**Supported Models**:
+```bash
+# Current configuration
+ollama pull llama3.1:8b          # Main LLM (8B parameters)
+ollama pull nomic-embed-text     # Embeddings model
+
+# Alternative models you can try
+ollama pull llama3.1:70b         # Larger model (better accuracy, slower)
+ollama pull mistral              # Alternative open-source model
+ollama pull phi3                 # Microsoft's efficient model
+```
+
+**Switching Models**:
+To use a different model, update `.env`:
+```env
+LLM_MODEL=mistral               # Change to desired model
+EMBEDDING_MODEL=nomic-embed-text # Keep embedding model same
+```
+
+**Model Recommendations**:
+- **llama3.1:8b** (Current): Best balance of speed and accuracy for bilingual support
+- **llama3.1:70b**: Better accuracy but requires more RAM (40GB+) and slower
+- **mistral**: Good alternative, similar performance
+- **phi3**: Faster but may have reduced Tamil language support
+
+**GPU Acceleration**:
+- Ollama automatically uses GPU if CUDA/ROCm is available
+- Significantly faster inference with GPU
+- Check GPU usage: `nvidia-smi` (NVIDIA) or `rocm-smi` (AMD)
 
 ## Key Features & Implementation
 
@@ -438,15 +495,37 @@ python test_tamil_query.py
    taskkill /PID <pid> /F
    ```
 
-4. **Tamil Not Displaying**
+4. **Ollama Connection Issues**
+   ```bash
+   # Check if Ollama is running
+   curl http://localhost:11434/api/tags
+   
+   # Verify models are installed
+   ollama list
+   
+   # If models are missing, pull them
+   ollama pull llama3.1:8b
+   ollama pull nomic-embed-text
+   
+   # Restart Ollama service (Windows)
+   # Stop Ollama from Task Manager, then restart it
+   ```
+
+5. **Tamil Not Displaying**
    - Ensure UTF-8 encoding in all files
    - Check browser supports Tamil fonts
    - Verify `Content-Type: text/html; charset=utf-8`
 
-5. **Hallucination Issues**
+6. **Hallucination Issues**
    - Check `_extract_app_number_from_context()` logic
    - Verify intent detection priority in rag.py
    - Review chat history structure
+
+7. **Slow Response Times**
+   - Check Ollama GPU utilization (if available)
+   - Verify network latency to Ollama service
+   - Consider using smaller model or quantized version
+   - Monitor system resources (RAM, CPU)
 
 ## Performance Optimization
 
@@ -490,6 +569,9 @@ CREATE INDEX idx_workflow_app ON workflow_history(application_id);
 - [ ] Offline mode support
 - [ ] Integration with GIS systems
 - [ ] Automated report generation
+- [ ] Support for alternative Ollama models (Mistral, Phi, etc.)
+- [ ] Model fine-tuning for domain-specific queries
+- [ ] GPU acceleration optimization for faster inference
 
 ## Contributing
 
