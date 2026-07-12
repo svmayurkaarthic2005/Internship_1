@@ -855,8 +855,23 @@ function escapeHtml(text) {
 }
 
 /**
- * Show typing indicator
+ * Show typing indicator with thinking animation
  */
+let thinkingTextInterval = null;
+const thinkingMessages = [
+    'Thinking...',
+    'யோசிக்கிறேன்...',
+    'Analyzing your question...',
+    'உங்கள் கேள்வியை ஆராய்கிறேன்...',
+    'Searching knowledge base...',
+    'தகவல்களைத் தேடுகிறேன்...',
+    'Processing...',
+    'செயலாக்குகிறேன்...',
+    'Preparing response...',
+    'பதிலை தயாரிக்கிறேன்...'
+];
+let thinkingMessageIndex = 0;
+
 function showTypingIndicator() {
     const indicator = document.createElement('div');
     indicator.className = 'message message-assistant typing-indicator';
@@ -871,7 +886,7 @@ function showTypingIndicator() {
                 <span class="dot"></span>
                 <span class="dot"></span>
             </div>
-            <span class="typing-text">Searching knowledge base...</span>
+            <span class="typing-text" id="thinkingText">${thinkingMessages[0]}</span>
         </div>
     `;
     
@@ -883,12 +898,42 @@ function showTypingIndicator() {
     }
     
     scrollToBottom();
+    
+    // Cycle through thinking messages every 2 seconds with fade effect
+    thinkingMessageIndex = 0;
+    thinkingTextInterval = setInterval(() => {
+        const textEl = document.getElementById('thinkingText');
+        if (textEl) {
+            // Fade out
+            textEl.style.opacity = '0';
+            
+            // Change text after fade out
+            setTimeout(() => {
+                thinkingMessageIndex = (thinkingMessageIndex + 1) % thinkingMessages.length;
+                textEl.textContent = thinkingMessages[thinkingMessageIndex];
+                // Fade in
+                textEl.style.opacity = '1';
+            }, 150);
+        } else {
+            // Element removed, clear interval
+            if (thinkingTextInterval) {
+                clearInterval(thinkingTextInterval);
+                thinkingTextInterval = null;
+            }
+        }
+    }, 2000);
 }
 
 /**
  * Remove typing indicator
  */
 function removeTypingIndicator() {
+    // Clear the thinking text interval
+    if (thinkingTextInterval) {
+        clearInterval(thinkingTextInterval);
+        thinkingTextInterval = null;
+    }
+    
     const indicator = document.getElementById('typingIndicator');
     if (indicator) {
         indicator.remove();

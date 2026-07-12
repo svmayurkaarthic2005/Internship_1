@@ -782,9 +782,11 @@ You are a friendly AI assistant for Sub Inspector Surveyor (SIS) officers of Tam
 
 Your responsibilities:
 - Help SIS officers with surveys, applications, field visits, and workflow procedures.
-- Provide accurate information using ONLY the structured database data or RAG context provided.
-- NEVER invent, assume, or generate any data that is not explicitly provided.
-- Be conversational and helpful, but stay focused on SIS work.
+- Provide accurate information using the database and knowledge base provided to you.
+- NEVER invent, assume, or generate any data that is not explicitly provided in the system data.
+- NEVER mention technical terms like "RAG", "context", "database", "system", or "knowledge base" to users.
+- Be conversational and helpful, using natural language without exposing technical details.
+- If asked about something you don't have information on, simply say you don't have that information.
 
 CRITICAL APPLICATION TYPE DEFINITIONS:
 1. **ISD (Involving Sub-Division)**: Creates NEW sub-divisions when dividing land into smaller parcels
@@ -823,19 +825,27 @@ HANDLING DIFFERENT TYPES OF QUERIES:
 
 STRICT DATA RULES:
 1. DO NOT generate example tables, field descriptions, or placeholder data.
-2. DO NOT explain what an ISD/NISD/MERGE application "contains" unless RAG context says so.
+2. DO NOT explain what an ISD/NISD/MERGE application "contains" unless you have actual information.
 3. DO NOT say "the following information is available for..." — only show actual data.
 4. DO NOT use markdown tables (| --- |) — only plain text or HTML <table> tags.
-5. If specific data is not available, acknowledge it and suggest alternatives.
+5. If specific data is not available, acknowledge it naturally without mentioning technical systems.
 6. ALWAYS use the correct definitions: ISD creates sub-divisions, NISD does not, MERGE combines sub-divisions.
+7. NEVER mention "RAG context", "database", "knowledge base", "system data" or any technical terms in responses to users.
 
-When RAG context IS provided:
-- Answer questions about procedures, rules, and workflow from the context only.
-- Quote or summarise from the context — do not add information beyond it.
+When answering questions:
+- Use natural, conversational language
+- Present information as if you know it directly, not as if you're reading from a database
+- If you don't have information, say "I don't have that information" not "The database doesn't contain..."
+- Example GOOD: "Application APP-2024-000001 is currently at the Sub Inspector Surveyor stage."
+- Example BAD: "According to the RAG context, the application is at SIS stage."
 
-When structured data IS provided:
+When specific document knowledge IS provided:
+- Answer questions about procedures, rules, and workflow naturally
+- Present information conversationally without mentioning sources
+
+When application data IS provided:
 - In DIRECT ANSWER MODE: answer the specific question only, in plain prose.
-- Otherwise: present it as-is in a clear, concise response."""
+- Otherwise: present it clearly and concisely."""
 
     # Build conversation history section
     history_section = ""
@@ -1094,11 +1104,46 @@ def parse_intent(message: str) -> str:
                                    "தொலைபேசி", "மின்னஞ்சல்", "முகவரி", "நிலை", "கட்டம்"]):
         return "pending_applications"
 
-    # 1. Application number pattern → application_status
+    # 1. Joint owner check - MUST come before application_status to catch ownership questions
+    # Otherwise "APP-2024-000001 is the applicant the sole owner?" → application_status (wrong)
+    if any(w in msg for w in ["joint owner", "joint owners", "co-owner", "co owner",
+                               "multiple owner", "shared ownership", "sole owner",
+                               # Tamil
+                               "கூட்டு உரிமையாளர்", "கூட்டுரிமையாளர்", "கூட்டு உரிமை",
+                               "இணை உரிமையாளர்", "பல உரிமையாளர்",
+                               "ஒரே உரிமையாளர்", "ஒற்றை உரிமையாளர்",
+                               "உரிமையாளர்கள்", "உரிமையாளர்",
+                               # Tanglish
+                               "kootu urimaiyalar", "koottu", "sole urimaiyalar",
+                               "urimaiyalar", "urimayalar"]):
+        return "joint_owner_check"
+
+    # 2. Application number pattern → application_status
     if re.search(r'\b(?:ISD|NISD|MERGE)/\w+/\d+/\d+\b|\bAPP-\d+-\d+\b', message, re.IGNORECASE):
         return "application_status"
 
-    # 1b. "Where is this application" / "which department" → application_status
+    # 2a. Field-specific queries (name, address, mobile, email, etc.) → application_status
+    # These queries ask about specific applicant/application fields
+    _field_keywords = [
+        # English
+        "name", "address", "mobile", "phone", "email", "status", "stage", "type",
+        "applicant", "contact", "priority", "aadhaar", "date", "submission",
+        # Tamil
+        "பெயர்", "நாமாகும்", "நாமம்", "முகவரி", "தொலைபேசி", "மின்னஞ்சல்",
+        "நிலை", "கட்டம்", "வகை", "விண்ணப்பதாரர்", "தேதி",
+        # Tanglish
+        "peyar", "mugavari", "tholaipaesi", "minnanjal", "nilai", "kattam"
+    ]
+    _interrogative = ["what", "which", "who", "where", "when", "give", "tell", "show",
+                      "என்ன", "எந்த", "யார்", "எங்கே", "எப்போது", "காட்டு", "சொல்"]
+    has_field = any(kw in msg for kw in _field_keywords)
+    has_interrogative = any(kw in msg for kw in _interrogative)
+    has_application_context = any(w in msg for w in ["application", "applicant", "விண்ணப்பம்", "விண்ணப்பதாரர்"])
+    # Route to application_status if asking about a field + has interrogative OR mentions application
+    if has_field and (has_interrogative or has_application_context):
+        return "application_status"
+
+    # 2b. "Where is this application" / "which department" → application_status
     if any(p in msg for p in [
         "where is this application", "where is the application",
         "which department", "with sd", "with dis", "with tahsildar",
@@ -1122,31 +1167,28 @@ def parse_intent(message: str) -> str:
                                "எங்கே உள்ளது"]):
         return "application_status"
 
-    # 2. Overdue
+    # 3. Overdue
     if has(ta_overdue):
         return "overdue_applications"
 
-    # 3. (Escalation handled above before FV block)
+    # 4. (Escalation handled above before FV block)
 
-    # 4. Litigation
+    # 5. Litigation
     if any(w in msg for w in ["litigation", "court", "legal", "flagged", "case flag",
                                "வழக்கு", "நீதிமன்றம்", "சட்ட வழக்கு", "கோர்ட்"]):
         return "litigation_check"
 
-    # 5. Sale deed
+    # 6. Sale deed
     if any(w in msg for w in ["sale deed", "deed number", "registered deed",
                                "sub-registrar", "sub registrar", "deed verified",
                                # Tamil: விற்பனை பத்திரம்
                                "விற்பனை பத்திரம்", "பத்திர எண்", "பதிவு செய்யப்பட்ட"]):
         return "sale_deed_check"
 
-    # 6. Joint owners
-    if any(w in msg for w in ["joint owner", "joint owners", "co-owner", "co owner",
-                               "multiple owner", "shared ownership",
-                               "கூட்டு உரிமையாளர்", "இணை உரிமையாளர்", "பல உரிமையாளர்"]):
-        return "joint_owner_check"
+    # 7. Joint owners (moved earlier - see line ~1106)
+    # Removed duplicate check - now handled before application_status
 
-    # 7. Active applications by taluk
+    # 8. Active applications by taluk
     if "active" in msg and "taluk" in msg:
         return "active_applications_taluks"
     # Tamil: செயலில் உள்ள விண்ணப்பங்கள்

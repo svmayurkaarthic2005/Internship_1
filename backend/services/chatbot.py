@@ -49,10 +49,16 @@ from sqlalchemy import select, and_, func
 logger = get_logger(__name__)
 
 
-def _extract_app_number_from_context(message: str, chat_history: list = None) -> str:
+def _extract_app_number_from_context(message: str, chat_history: list = None, allow_implicit_continuation: bool = False) -> str:
     """
     Extract application number from current message or recent chat history.
     Handles references like "this application", "that application", etc.
+
+    Args:
+        message: Current user message
+        chat_history: List of previous messages
+        allow_implicit_continuation: If True, check immediate previous message for app number
+                                     even without explicit reference words (for field queries)
 
     Returns:
         Application number in uppercase, or None if not found
@@ -69,18 +75,39 @@ def _extract_app_number_from_context(message: str, chat_history: list = None) ->
     if app_match:
         return app_match.group(0).upper()
 
-    # Pattern 3: Check if user is referring to a previous application
-    reference_keywords = ["this", "that", "the", "same", "இந்த", "அந்த"]
-    if any(keyword in message.lower() for keyword in reference_keywords):
-        if chat_history:
-            for msg in reversed(chat_history[-5:]):  # Check last 5 messages
-                content = msg.get("content", "")
-                app_match = re.search(r'(ISD|NISD|MERGE)/\w+/\d+/\d+', content, re.IGNORECASE)
-                if not app_match:
-                    app_match = re.search(r'APP-\d{4}-\d{6}', content, re.IGNORECASE)
-                if app_match:
-                    logger.info(f"Found application reference '{app_match.group(0)}' from chat history")
-                    return app_match.group(0).upper()
+    # Pattern 3: Check if user is referring to a previous application using strict patterns
+    # Avoid generic words like "the" which cause false positives
+    reference_patterns = [
+        "this application", "that application", "same application",
+        "this app", "that app", "the application",
+        "இந்த விண்ணப்பம்", "அந்த விண்ணப்பம்",
+    ]
+    _msg_lower = message.lower()
+    has_explicit_reference = any(pattern in _msg_lower for pattern in reference_patterns)
+    
+    # Pattern 4: Implicit continuation - if asking a field query immediately after
+    # an application was discussed, assume continuity (only check last 2 messages)
+    if allow_implicit_continuation and not has_explicit_reference and chat_history:
+        # Check only the immediate previous exchange (last 2 messages: user + assistant)
+        for msg in reversed(chat_history[-2:]):
+            content = msg.get("content", "")
+            app_match = re.search(r'(ISD|NISD|MERGE)/\w+/\d+/\d+', content, re.IGNORECASE)
+            if not app_match:
+                app_match = re.search(r'APP-\d{4}-\d{6}', content, re.IGNORECASE)
+            if app_match:
+                logger.info(f"Found implicit application continuation '{app_match.group(0)}' from immediate context")
+                return app_match.group(0).upper()
+    
+    # Pattern 5: Explicit reference - search further back in history (last 5 messages)
+    if has_explicit_reference and chat_history:
+        for msg in reversed(chat_history[-5:]):
+            content = msg.get("content", "")
+            app_match = re.search(r'(ISD|NISD|MERGE)/\w+/\d+/\d+', content, re.IGNORECASE)
+            if not app_match:
+                app_match = re.search(r'APP-\d{4}-\d{6}', content, re.IGNORECASE)
+            if app_match:
+                logger.info(f"Found application reference '{app_match.group(0)}' from chat history")
+                return app_match.group(0).upper()
 
     return None
 
@@ -549,9 +576,20 @@ async def process_chat(
         elif intent in ["is_nisd_or_isd", "check_documents", "check_sale_deed"]:
             app_number = extract_application_number(message)
             if not app_number:
-                app_number = "APP-2024-000001"
-            structured_data = await get_application_detail(db, app_number)
-            structured_data["query_type"] = "Application Details"
+                # Allow implicit continuation since these are specific queries about an application
+                app_number = _extract_app_number_from_context(message, chat_history, allow_implicit_continuation=True)
+            
+            if not app_number:
+                # No app number - ask for it
+                is_tamil_lang = language in ("ta", "tanglish")
+                if is_tamil_lang:
+                    response_text = "தயவுசெய்து விண்ணப்ப எண்ணை குறிப்பிடவும். (எ.கா: APP-2024-000001)"
+                else:
+                    response_text = "Please specify which application you're asking about. For example: APP-2024-000001"
+                structured_data = {"found": False, "query_type": "Application Details"}
+            else:
+                structured_data = await get_application_detail(db, app_number)
+                structured_data["query_type"] = "Application Details"
 
         elif intent == "isd_processing":
             app_number = extract_application_number(message) or _extract_app_number_from_context(message, chat_history)
@@ -1087,19 +1125,36 @@ async def process_chat(
             structured_data["query_type"] = "Merge Application Details"
 
         elif intent == "application_status":
-            app_number = _extract_app_number_from_context(message, chat_history) or extract_application_number(message)
+            # Extract from current message first; only check history if user uses reference words
+            app_number = extract_application_number(message)
             if not app_number:
-                # Fall back to most recently touched application for context-free queries
-                # like "where is this application right now"
-                from backend.models import Application as _AppStatusModel
-                _last_app = (await db.execute(
-                    select(_AppStatusModel)
-                    .where(_AppStatusModel.assigned_officer_id == officer.officer_id)
-                    .order_by(_AppStatusModel.updated_at.desc())
-                    .limit(1)
-                )).scalar_one_or_none()
-                if _last_app:
-                    app_number = _last_app.application_number
+                # Check for explicit reference patterns OR implicit continuation for field queries
+                # Implicit continuation: if user just discussed an app, next field query refers to it
+                _field_keywords = [
+                    "name", "address", "mobile", "phone", "email", "status", "stage",
+                    "பெயர்", "முகவரி", "தொலைபேசி", "நிலை", "கட்டம்"
+                ]
+                is_field_query = any(kw in message.lower() for kw in _field_keywords)
+                app_number = _extract_app_number_from_context(message, chat_history, allow_implicit_continuation=is_field_query)
+                
+                # Only fall back to most recent application if explicit reference pattern found
+                if not app_number:
+                    reference_patterns = [
+                        "this application", "that application", "same application",
+                        "this app", "that app",
+                        "இந்த விண்ணப்பம்", "அந்த விண்ணப்பம்",
+                    ]
+                    _msg_lower = message.lower()
+                    if any(pattern in _msg_lower for pattern in reference_patterns):
+                        from backend.models import Application as _AppStatusModel
+                        _last_app = (await db.execute(
+                            select(_AppStatusModel)
+                            .where(_AppStatusModel.assigned_officer_id == officer.officer_id)
+                            .order_by(_AppStatusModel.updated_at.desc())
+                            .limit(1)
+                        )).scalar_one_or_none()
+                        if _last_app:
+                            app_number = _last_app.application_number
             if app_number:
                 if "history" in message.lower() or "workflow" in message.lower() or "timeline" in message.lower():
                     from backend.models import WorkflowHistory
@@ -1376,22 +1431,60 @@ async def process_chat(
         elif intent in ["check_sale_deed", "sale_deed_check"]:
             app_number = extract_application_number(message)
             if not app_number:
-                app_number = "APP-2024-000001"
-            structured_data = await get_application_detail(db, app_number)
-            structured_data["query_type"] = "Sale Deed Verification"
-            structured_data["sale_deed_verified"] = structured_data.get("sale_deed_registered", False)
+                app_number = _extract_app_number_from_context(message, chat_history)
+            
+            if not app_number:
+                # No app number provided - ask user for it
+                is_tamil_lang = language in ("ta", "tanglish")
+                if is_tamil_lang:
+                    response_text = "தயவுசெய்து விண்ணப்ப எண்ணை குறிப்பிடவும். (எ.கா: APP-2024-000001)"
+                else:
+                    response_text = "Please specify which application you're asking about. For example: APP-2024-000001"
+                structured_data = {"found": False, "query_type": "Sale Deed Verification"}
+            else:
+                structured_data = await get_application_detail(db, app_number)
+                structured_data["query_type"] = "Sale Deed Verification"
+                structured_data["sale_deed_verified"] = structured_data.get("sale_deed_registered", False)
 
         elif intent == "joint_owner_check":
-            survey_no = extract_survey_number(message)
-            if not survey_no:
-                survey_no = "145"
-            owners_data = await get_survey_owners(db, survey_no)
-            joint_owners = [o for o in owners_data.get("owners", []) if o.get("is_joint_owner")]
-            structured_data = {
-                "survey_no": survey_no,
-                "joint_owners": joint_owners,
-                "query_type": "Joint Ownership Details"
-            }
+            # Check if asking about an application's survey ownership or direct survey ownership
+            app_number = extract_application_number(message)
+            if not app_number:
+                # Allow implicit continuation for joint owner queries
+                app_number = _extract_app_number_from_context(message, chat_history, allow_implicit_continuation=True)
+            
+            if app_number:
+                # Get application details to find the survey number
+                app_data = await get_application_detail(db, app_number)
+                survey_no = app_data.get("survey_no") if app_data.get("found") else None
+                if not survey_no:
+                    structured_data = {"found": False, "message": f"Application {app_number} not found or has no survey linked"}
+                else:
+                    owners_data = await get_survey_owners(db, survey_no)
+                    joint_owners = [o for o in owners_data.get("owners", []) if o.get("is_joint_owner")]
+                    structured_data = {
+                        "found": True,
+                        "application_number": app_number,
+                        "survey_no": survey_no,
+                        "joint_owners": joint_owners,
+                        "total_owners": len(owners_data.get("owners", [])),
+                        "query_type": "Joint Ownership Check"
+                    }
+            else:
+                # Direct survey number query
+                survey_no = extract_survey_number(message)
+                if not survey_no:
+                    structured_data = {"found": False, "message": "Please provide an application number or survey number"}
+                else:
+                    owners_data = await get_survey_owners(db, survey_no)
+                    joint_owners = [o for o in owners_data.get("owners", []) if o.get("is_joint_owner")]
+                    structured_data = {
+                        "found": True,
+                        "survey_no": survey_no,
+                        "joint_owners": joint_owners,
+                        "total_owners": len(owners_data.get("owners", [])),
+                        "query_type": "Joint Ownership Details"
+                    }
 
         elif intent == "escalation_check":
             # Find applications approaching OR past the 15-working-day escalation threshold
@@ -1599,16 +1692,26 @@ async def process_chat(
                     )
                 logger.info("Responded with direct Python answer (merge subdivision query)")
 
+            # ── Check if user is asking about application but didn't provide number ──
+            if not response_text and _asking_specific_field and intent == "application_status" and not app_no:
+                # User is asking a specific question about an application but didn't provide the number
+                is_tamil = language in ("ta", "tanglish")
+                if is_tamil:
+                    response_text = "தயவுசெய்து விண்ணப்ப எண்ணை குறிப்பிடவும். (எ.கா: APP-2024-000001)"
+                else:
+                    response_text = "Please provide the application number (e.g., APP-2024-000001) so I can help you with that information."
+                logger.info("User asked about application field without providing app number - prompted for app number")
+
             # ── Specific field extraction for application_status queries ──
-            if not response_text and _asking_specific_field and intent == "application_status":
+            if not response_text and _asking_specific_field and intent == "application_status" and app_no:
                 # Check for NISD/ISD type questions first (higher priority)
-                if ("nisd" in _msg_lower or "isd" in _msg_lower) and app_no:
+                if ("nisd" in _msg_lower or "isd" in _msg_lower):
                     app_type_value = sd.get("type", "N/A")
                     response_text = f"Application {app_no} is of type: {app_type_value}"
                     logger.info(f"Responded with application type '{app_type_value}' for {app_no}")
                 
             # Map user keywords to structured_data fields (English + Tamil)
-            if not response_text and _asking_specific_field and intent == "application_status":
+            if not response_text and _asking_specific_field and intent == "application_status" and app_no:
                 _field_map = {
                     # Address
                     "address": ("applicant_address", "Address"),
@@ -1892,6 +1995,38 @@ async def process_chat(
                     response_text = f"Yes, deed no. {deed_no} matches Sub-Registrar's registered index as of {sub_date}."
                 else:
                     response_text = "No match found — flag to Sub-Registrar's office before proceeding."
+        elif intent == "joint_owner_check":
+            if not structured_data or not structured_data.get("found", True):
+                response_text = structured_data.get("message", "Please provide an application number or survey number")
+            else:
+                joint_owners = structured_data.get("joint_owners", [])
+                total_owners = structured_data.get("total_owners", 0)
+                survey_no = structured_data.get("survey_no", "N/A")
+                app_no = structured_data.get("application_number")
+                is_tamil = language in ("ta", "tanglish")
+                
+                # Build response based on whether it's application or survey query
+                if is_tamil:
+                    prefix = f"விண்ணப்பம் {app_no} (கணக்கெண் {survey_no})" if app_no else f"கணக்கெண் {survey_no}"
+                else:
+                    prefix = f"For application {app_no} (Survey {survey_no})" if app_no else f"For Survey {survey_no}"
+                
+                if total_owners == 0:
+                    if is_tamil:
+                        response_text = f"{prefix}: உரிமையாளர் பதிவுகள் இல்லை."
+                    else:
+                        response_text = f"{prefix}: No ownership records found."
+                elif len(joint_owners) == 0:
+                    if is_tamil:
+                        response_text = f"{prefix}: விண்ணப்பதாரர் ஒரே உரிமையாளர். கூட்டு உரிமையாளர்கள் இல்லை."
+                    else:
+                        response_text = f"{prefix}: The applicant is the sole owner. No joint owners are listed."
+                else:
+                    joint_names = [o.get("name", "N/A") for o in joint_owners]
+                    if is_tamil:
+                        response_text = f"{prefix}: {len(joint_owners)} கூட்டு உரிமையாளர்கள் உள்ளனர்: {', '.join(joint_names)}."
+                    else:
+                        response_text = f"{prefix}: There are {len(joint_owners)} joint owner(s) listed: {', '.join(joint_names)}."
         elif intent == "sd_additional_info":
             if not structured_data or not structured_data.get("found", True):
                 response_text = "Application not found."
@@ -2536,9 +2671,18 @@ async def process_chat_stream(
         elif intent in ["is_nisd_or_isd", "check_documents", "check_sale_deed"]:
             app_number = extract_application_number(message)
             if not app_number:
-                app_number = "APP-2024-000001"
-            structured_data = await get_application_detail(db, app_number)
-            structured_data["query_type"] = "Application Details"
+                # Allow implicit continuation - check immediate previous message for app number
+                # These intents are asking specific questions about an application
+                _msg_lower = message.lower()
+                # Always allow implicit continuation for these specific application queries
+                app_number = _extract_app_number_from_context(message, chat_history, allow_implicit_continuation=True)
+            
+            if app_number:
+                structured_data = await get_application_detail(db, app_number)
+                structured_data["query_type"] = "Application Details"
+            else:
+                # No app number provided - return empty structured_data
+                structured_data = {"found": False, "message": "Please provide an application number"}
 
         elif intent == "isd_applications":
             structured_data = await get_officer_applications(db, officer, application_type="ISD")
@@ -2565,21 +2709,79 @@ async def process_chat_stream(
             structured_data["query_type"] = "Merge Application Details"
 
         elif intent == "application_status":
-            app_number = _extract_app_number_from_context(message, chat_history) or extract_application_number(message)
+            # Extract from current message first; only check history if user uses reference words
+            app_number = extract_application_number(message)
             if not app_number:
-                # Fall back to most recently touched application for context-free queries
-                from backend.models import Application as _AppStatusModel_s
-                _last_app_s = (await db.execute(
-                    select(_AppStatusModel_s)
-                    .where(_AppStatusModel_s.assigned_officer_id == officer.officer_id)
-                    .order_by(_AppStatusModel_s.updated_at.desc())
-                    .limit(1)
-                )).scalar_one_or_none()
-                if _last_app_s:
-                    app_number = _last_app_s.application_number
+                # Check for explicit reference patterns OR implicit continuation for field queries
+                # Implicit continuation: if user just discussed an app, next field query refers to it
+                _field_keywords = [
+                    "name", "address", "mobile", "phone", "email", "status", "stage",
+                    "பெயர்", "முகவரி", "தொலைபேசி", "நிலை", "கட்டம்"
+                ]
+                is_field_query = any(kw in message.lower() for kw in _field_keywords)
+                app_number = _extract_app_number_from_context(message, chat_history, allow_implicit_continuation=is_field_query)
+                
+                # Only fall back to most recent application if explicit reference pattern found
+                if not app_number:
+                    reference_patterns = [
+                        "this application", "that application", "same application",
+                        "this app", "that app",
+                        "இந்த விண்ணப்பம்", "அந்த விண்ணப்பம்",
+                    ]
+                    _msg_lower = message.lower()
+                    if any(pattern in _msg_lower for pattern in reference_patterns):
+                        from backend.models import Application as _AppStatusModel_s
+                        _last_app_s = (await db.execute(
+                            select(_AppStatusModel_s)
+                            .where(_AppStatusModel_s.assigned_officer_id == officer.officer_id)
+                            .order_by(_AppStatusModel_s.updated_at.desc())
+                            .limit(1)
+                        )).scalar_one_or_none()
+                        if _last_app_s:
+                            app_number = _last_app_s.application_number
             if app_number:
                 structured_data = await get_application_detail(db, app_number)
                 structured_data["query_type"] = "Application Status"
+        
+        elif intent == "joint_owner_check":
+            # Check if asking about an application's survey ownership or direct survey ownership
+            app_number = extract_application_number(message)
+            if not app_number:
+                # Allow implicit continuation for joint owner queries
+                app_number = _extract_app_number_from_context(message, chat_history, allow_implicit_continuation=True)
+            
+            if app_number:
+                # Get application details to find the survey number
+                app_data = await get_application_detail(db, app_number)
+                survey_no = app_data.get("survey_no") if app_data.get("found") else None
+                if not survey_no:
+                    structured_data = {"found": False, "message": f"Application {app_number} not found or has no survey linked"}
+                else:
+                    owners_data = await get_survey_owners(db, survey_no)
+                    joint_owners = [o for o in owners_data.get("owners", []) if o.get("is_joint_owner")]
+                    structured_data = {
+                        "found": True,
+                        "application_number": app_number,
+                        "survey_no": survey_no,
+                        "joint_owners": joint_owners,
+                        "total_owners": len(owners_data.get("owners", [])),
+                        "query_type": "Joint Ownership Check"
+                    }
+            else:
+                # Direct survey number query
+                survey_no = extract_survey_number(message)
+                if not survey_no:
+                    structured_data = {"found": False, "message": "Please provide an application number or survey number"}
+                else:
+                    owners_data = await get_survey_owners(db, survey_no)
+                    joint_owners = [o for o in owners_data.get("owners", []) if o.get("is_joint_owner")]
+                    structured_data = {
+                        "found": True,
+                        "survey_no": survey_no,
+                        "joint_owners": joint_owners,
+                        "total_owners": len(owners_data.get("owners", [])),
+                        "query_type": "Joint Ownership Details"
+                    }
         
         elif intent == "survey_detail":
             survey_no = extract_survey_number(message)
@@ -2903,16 +3105,26 @@ async def process_chat_stream(
                         f"but no sub-divisions have been linked yet."
                     )
 
+            # ── Check if user is asking about application but didn't provide number ──
+            if not _direct_answer_text and _asking_specific_field and intent == "application_status" and not app_no:
+                # User is asking a specific question about an application but didn't provide the number
+                is_tamil_check = language in ("ta", "tanglish")
+                if is_tamil_check:
+                    _direct_answer_text = "தயவுசெய்து விண்ணப்ப எண்ணை குறிப்பிடவும். (எ.கா: APP-2024-000001)"
+                else:
+                    _direct_answer_text = "Please provide the application number (e.g., APP-2024-000001) so I can help you with that information."
+                logger.info("User asked about application field without providing app number - prompted for app number")
+
             # ── Specific field extraction for application_status queries (stream) ──
-            if not _direct_answer_text and _asking_specific_field and intent == "application_status":
+            if not _direct_answer_text and _asking_specific_field and intent == "application_status" and app_no:
                 # Check for NISD/ISD type questions first (higher priority)
-                if ("nisd" in _msg_lower or "isd" in _msg_lower) and app_no:
+                if ("nisd" in _msg_lower or "isd" in _msg_lower):
                     app_type_value = sd.get("type", "N/A")
                     _direct_answer_text = f"Application {app_no} is of type: {app_type_value}"
                     logger.info(f"Responded with application type '{app_type_value}' for {app_no}")
                 
             # Map user keywords to structured_data fields (English + Tamil)
-            if not _direct_answer_text and _asking_specific_field and intent == "application_status":
+            if not _direct_answer_text and _asking_specific_field and intent == "application_status" and app_no:
                 _field_map = {
                     # Address
                     "address": ("applicant_address", "Address"),
@@ -3250,6 +3462,42 @@ async def process_chat_stream(
             full_response_text = chunk
             sse_data = f"data: {json.dumps({'content': chunk})}\n\n"
             yield sse_data.encode('utf-8')
+        
+        elif intent == "joint_owner_check":
+            if not structured_data or not structured_data.get("found", True):
+                chunk = structured_data.get("message", "Please provide an application number or survey number")
+            else:
+                joint_owners = structured_data.get("joint_owners", [])
+                total_owners = structured_data.get("total_owners", 0)
+                survey_no = structured_data.get("survey_no", "N/A")
+                app_no = structured_data.get("application_number")
+                is_tamil = language in ("ta", "tanglish")
+                
+                # Build response based on whether it's application or survey query
+                if is_tamil:
+                    prefix = f"விண்ணப்பம் {app_no} (கணக்கெண் {survey_no})" if app_no else f"கணக்கெண் {survey_no}"
+                else:
+                    prefix = f"For application {app_no} (Survey {survey_no})" if app_no else f"For Survey {survey_no}"
+                
+                if total_owners == 0:
+                    if is_tamil:
+                        chunk = f"{prefix}: உரிமையாளர் பதிவுகள் இல்லை."
+                    else:
+                        chunk = f"{prefix}: No ownership records found."
+                elif len(joint_owners) == 0:
+                    if is_tamil:
+                        chunk = f"{prefix}: விண்ணப்பதாரர் ஒரே உரிமையாளர். கூட்டு உரிமையாளர்கள் இல்லை."
+                    else:
+                        chunk = f"{prefix}: The applicant is the sole owner. No joint owners are listed."
+                else:
+                    joint_names = [o.get("name", "N/A") for o in joint_owners]
+                    if is_tamil:
+                        chunk = f"{prefix}: {len(joint_owners)} கூட்டு உரிமையாளர்கள் உள்ளனர்: {', '.join(joint_names)}."
+                    else:
+                        chunk = f"{prefix}: There are {len(joint_owners)} joint owner(s) listed: {', '.join(joint_names)}."
+            full_response_text = chunk
+            sse_data = f"data: {json.dumps({'content': chunk})}\n\n"
+            yield sse_data.encode('utf-8')
 
         elif intent == "application_status":
             if not structured_data or not structured_data.get("found", True):
@@ -3420,7 +3668,7 @@ async def process_chat_stream(
         elif intent in ("field_visits", "ward_surveys", "block_surveys",
                         "survey_detail", "survey_owners", "next_subdivision",
                         "jurisdiction_summary", "rejection_info", "taluk_summary",
-                        "litigation_check", "joint_owner_check",
+                        "litigation_check",
                         "merge_info", "town_applications", "block_applications"):
             # Table is rendered on the frontend. Just emit a short natural intro.
             found = structured_data.get("found", True) if structured_data else False
@@ -3753,7 +4001,7 @@ def _build_table_data(intent: str, message: str, user_id: str, structured_data: 
         }
         
     # 4. Owner lookup
-    elif intent_lower in ["owner_lookup", "survey_owners", "joint_owner_check"]:
+    elif intent_lower in ["owner_lookup", "survey_owners"]:
         owners_list = []
         for o in structured_data.get("owners", []):
             sub_div = o.get("sub_division")

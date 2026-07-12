@@ -357,6 +357,10 @@
     color: var(--text-secondary);
     margin-left: var(--spacing-md);
     font-style: italic;
+    /* Smooth transition for text changes */
+    transition: opacity 0.3s ease-in-out;
+    min-width: 200px;
+    display: inline-block;
 }
 
 /* Quick Suggestions */
