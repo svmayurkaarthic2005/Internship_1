@@ -61,8 +61,8 @@ async function initChat() {
         await loadOrCreateSession();
         console.log('✓ Session ready:', currentSessionId);
         
-        // Load chat history from sessionStorage
-        console.log('Step 4: Loading chat history from sessionStorage...');
+        // Load chat history from localStorage
+        console.log('Step 4: Loading chat history from localStorage...');
         if (window.chatStorage) {
             messageHistory = window.chatStorage.load();
             console.log(`✓ Loaded ${messageHistory.length} messages from storage`);
@@ -251,7 +251,7 @@ async function createNewSession() {
  * Load existing session from storage or create new one
  */
 async function loadOrCreateSession() {
-    // Try to load session ID from sessionStorage
+    // Try to load session ID from localStorage
     if (window.chatStorage) {
         const savedSessionId = window.chatStorage.loadSessionId();
         if (savedSessionId) {
@@ -481,8 +481,14 @@ async function sendMessage() {
         quickSuggestions.style.display = 'none';
     }
     
+    // Save user message to localStorage before rendering
+    const userTimestamp = new Date().toISOString();
+    if (window.chatStorage) {
+        window.chatStorage.addMessage('user', text, detectLanguage(text));
+    }
+    
     // Render user message
-    renderMessage('user', text, new Date().toISOString(), detectLanguage(text));
+    renderMessage('user', text, userTimestamp, detectLanguage(text));
     
     // Clear input
     messageInput.value = '';
@@ -658,7 +664,7 @@ async function sendMessage() {
             }
         }
         
-        // Add to history and save to sessionStorage
+        // Save assistant response to localStorage
         if (aiResponse) {
             if (window.chatStorage) {
                 window.chatStorage.addMessage('assistant', aiResponse, 'auto');
@@ -996,20 +1002,20 @@ function renderSessionHistory(sessions) {
  * Handle new chat
  */
 async function handleNewChat() {
-    // Clear current chat
+    // Clear current chat UI
     chatMessages.innerHTML = '';
     messageHistory = [];
     
-    // Clear sessionStorage chat history
+    // Clear localStorage chat history and old session ID
     if (window.chatStorage) {
         window.chatStorage.clear();
-        console.log('🗑️ Cleared chat history from sessionStorage');
+        console.log('🗑️ Cleared chat history from localStorage');
     }
     
     // Create new session
     await createNewSession();
     
-    // Save new session ID
+    // Persist new session ID to localStorage
     if (window.chatStorage && currentSessionId) {
         window.chatStorage.saveSessionId(currentSessionId);
     }
@@ -1032,17 +1038,20 @@ async function handleLogout() {
     try {
         console.log('🚪 Logging out...');
         
-        // Clear officer data
-        sessionStorage.removeItem('officer_data');
-        
-        // Clear chat history from sessionStorage
+        // Clear chat history and session ID from localStorage (must happen
+        // BEFORE officer_data is removed so the scoped key can still be built)
         if (window.chatStorage) {
             window.chatStorage.clear();
-            console.log('✓ Cleared chat history');
+            console.log('✓ Cleared chat history from localStorage');
         }
         
-        // Clear session ID
-        sessionStorage.removeItem('sis_current_session_id');
+        // Clear officer data from sessionStorage
+        sessionStorage.removeItem('officer_data');
+        
+        // Remove the persisted officer id so a different user on the same
+        // browser starts fresh (chatStorage.clear above ran while officer_data
+        // was still set, so it already removed the scoped history keys)
+        localStorage.removeItem('sis_last_officer_id');
         
         console.log('✓ All session data cleared');
         
@@ -1433,14 +1442,47 @@ function handleFileAttachment() {
         // Show file preview with analysis
         showFilePreview(file, fileAnalysis);
         
-        // Automatically ask about the file
-        if (fileAnalysis.canAnalyze) {
-            setTimeout(() => {
+        // For text files: auto-fill the input with file content so the bot can answer.
+        // For PDF/Word: show a clear notice — document content extraction is not yet
+        // supported, so we must NOT send a misleading generic question that causes
+        // the bot to return random / unrelated answers.
+        if (fileAnalysis.category === 'text' || fileAnalysis.category === 'image') {
+            if (fileAnalysis.canAnalyze) {
                 const question = generateFileQuestion(file, fileAnalysis);
-                messageInput.value = question;
-                handleInputChange();
-                messageInput.focus();
-            }, 500);
+                if (question) {
+                    setTimeout(() => {
+                        messageInput.value = question;
+                        handleInputChange();
+                        messageInput.focus();
+                    }, 500);
+                }
+            }
+        } else if (fileAnalysis.category === 'pdf' || fileAnalysis.category === 'document') {
+            // Show an assistant-style notice directly in the chat
+            const noticeDiv = document.createElement('div');
+            noticeDiv.className = 'message message-assistant';
+            const time = new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
+            noticeDiv.innerHTML = `
+                <div class="message-avatar">
+                    <i data-lucide="bot" class="avatar-icon"></i>
+                </div>
+                <div class="message-content-wrapper">
+                    <div class="message-content">
+                        <strong>📄 Document uploaded: ${escapeHtml(file.name)}</strong><br><br>
+                        I can see you've uploaded a ${fileAnalysis.category === 'pdf' ? 'PDF' : 'Word'} document.
+                        Currently, I can only read <strong>plain text (.txt)</strong> file contents directly.<br><br>
+                        To get answers from this document, please:<br>
+                        • Copy and paste the relevant text into the chat, or<br>
+                        • Ask me a specific SIS question (surveys, applications, field visits, etc.)
+                    </div>
+                    <div class="message-footer">
+                        <span class="message-time">${time}</span>
+                    </div>
+                </div>
+            `;
+            chatMessages.appendChild(noticeDiv);
+            if (typeof lucide !== 'undefined') lucide.createIcons();
+            scrollToBottom();
         }
     };
     
@@ -1584,19 +1626,19 @@ function getImageDimensions(dataUrl) {
  * Generate question about uploaded file
  */
 function generateFileQuestion(file, analysis) {
-    const fileName = file.name;
-    
     if (analysis.category === 'image') {
-        return `Can you help me analyze this image: ${fileName}? What can you tell me about it?`;
+        return `Can you help me analyze this image: ${file.name}? What can you tell me about it?`;
     } else if (analysis.category === 'text') {
-        return `I've uploaded a text file "${fileName}". Can you help me understand or summarize its content?`;
-    } else if (analysis.category === 'pdf') {
-        return `I've uploaded a PDF document "${fileName}". Can you help me extract information from it?`;
-    } else if (analysis.category === 'document') {
-        return `I've uploaded a Word document "${fileName}". Can you help me analyze or summarize it?`;
-    } else {
-        return `I've uploaded a file "${fileName}". Can you help me with it?`;
+        // For text files we append the content directly so the bot can actually answer
+        const preview = analysis.metadata.preview || '';
+        if (preview) {
+            return `Here is the content of the file "${file.name}":\n\n${preview}\n\nPlease answer based on this content.`;
+        }
+        return `I've uploaded a text file "${file.name}". Can you help me understand or summarize its content?`;
     }
+    // For PDF / Word: do NOT generate a question — showFilePreview handles the UI
+    // and we will show an explicit notice instead of routing to the chatbot.
+    return '';
 }
 
 /**

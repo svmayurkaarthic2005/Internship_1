@@ -1,35 +1,73 @@
 /**
  * Chat Storage Module
- * Handles sessionStorage for chat history
+ * Persists chat history and session ID in localStorage so they survive page
+ * refreshes. Data is only wiped on explicit logout or "New Chat".
+ *
+ * localStorage keys are namespaced per officer so multiple accounts on the
+ * same browser don't share history.
  */
 
 const STORAGE_KEY_CHAT_HISTORY = 'sis_chat_history';
-const STORAGE_KEY_SESSION_ID = 'sis_current_session_id';
-const MAX_HISTORY_MESSAGES = 50; // Keep last 50 messages
+const STORAGE_KEY_SESSION_ID   = 'sis_current_session_id';
+const MAX_HISTORY_MESSAGES     = 100; // Keep last 100 messages
 
 /**
- * Save chat history to sessionStorage
+ * Return the officer-scoped storage key.
+ *
+ * sessionStorage is tab-scoped and may be empty on a hard refresh before
+ * auth re-populates it.  We persist the last-known employee_id in
+ * localStorage ('sis_last_officer_id') so the key stays stable across
+ * refreshes and the chat history is never "lost" just because the page
+ * reloaded before auth finished.
+ *
+ * Falls back to the bare base key only when no officer id is known at all.
+ */
+function _scopedKey(base) {
+    try {
+        // Primary: sessionStorage (set by auth after login)
+        const raw = sessionStorage.getItem('officer_data');
+        if (raw) {
+            const d = JSON.parse(raw);
+            const id = d.employee_id || d.officer_id || '';
+            if (id) {
+                // Keep localStorage in sync so refreshes can find the same key
+                localStorage.setItem('sis_last_officer_id', id);
+                return `${base}_${id}`;
+            }
+        }
+    } catch (_) { /* ignore */ }
+
+    try {
+        // Fallback: last known id persisted in localStorage
+        const id = localStorage.getItem('sis_last_officer_id');
+        if (id) return `${base}_${id}`;
+    } catch (_) { /* ignore */ }
+
+    return base;
+}
+
+/**
+ * Save chat history to localStorage
  */
 function saveChatHistoryToStorage(history) {
     try {
-        // Keep only last MAX_HISTORY_MESSAGES
         const trimmedHistory = history.slice(-MAX_HISTORY_MESSAGES);
-        sessionStorage.setItem(STORAGE_KEY_CHAT_HISTORY, JSON.stringify(trimmedHistory));
-        console.log(`💾 Saved ${trimmedHistory.length} messages to sessionStorage`);
+        localStorage.setItem(_scopedKey(STORAGE_KEY_CHAT_HISTORY), JSON.stringify(trimmedHistory));
+        console.log(`💾 Saved ${trimmedHistory.length} messages to localStorage`);
     } catch (error) {
         console.error('Error saving chat history:', error);
     }
 }
 
 /**
- * Load chat history from sessionStorage
+ * Load chat history from localStorage
  */
 function loadChatHistoryFromStorage() {
     try {
-        const stored = sessionStorage.getItem(STORAGE_KEY_CHAT_HISTORY);
+        const stored = localStorage.getItem(_scopedKey(STORAGE_KEY_CHAT_HISTORY));
         if (stored) {
             const history = JSON.parse(stored);
-            console.log(`📂 Loaded ${history.length} messages from sessionStorage`);
+            console.log(`📂 Loaded ${history.length} messages from localStorage`);
             return history;
         }
     } catch (error) {
@@ -39,58 +77,62 @@ function loadChatHistoryFromStorage() {
 }
 
 /**
- * Add message to chat history and save to storage
+ * Add a single message to history and persist it
  */
 function addMessageToHistory(role, content, language = 'auto') {
     const message = {
-        role: role,
-        content: content,
-        language: language,
+        role,
+        content,
+        language,
         timestamp: new Date().toISOString()
     };
-    
-    // Get current history
+
     const history = loadChatHistoryFromStorage();
     history.push(message);
-    
-    // Save updated history
     saveChatHistoryToStorage(history);
-    
+
     return message;
 }
 
 /**
- * Clear chat history from sessionStorage
+ * Clear chat history from localStorage (called on logout or new chat)
  */
 function clearChatHistory() {
     try {
-        sessionStorage.removeItem(STORAGE_KEY_CHAT_HISTORY);
-        console.log('🗑️ Cleared chat history from sessionStorage');
+        localStorage.removeItem(_scopedKey(STORAGE_KEY_CHAT_HISTORY));
+        localStorage.removeItem(_scopedKey(STORAGE_KEY_SESSION_ID));
+        // On a full logout also remove the persisted officer id so a
+        // different user on the same browser starts with a clean slate.
+        const isLoggingOut = !sessionStorage.getItem('officer_data');
+        if (isLoggingOut) {
+            localStorage.removeItem('sis_last_officer_id');
+        }
+        console.log('🗑️ Cleared chat history from localStorage');
     } catch (error) {
         console.error('Error clearing chat history:', error);
     }
 }
 
 /**
- * Save current session ID
+ * Save current session ID to localStorage
  */
 function saveSessionId(sessionId) {
     try {
-        sessionStorage.setItem(STORAGE_KEY_SESSION_ID, sessionId);
-        console.log('💾 Saved session ID:', sessionId);
+        localStorage.setItem(_scopedKey(STORAGE_KEY_SESSION_ID), sessionId);
+        console.log('💾 Saved session ID to localStorage:', sessionId);
     } catch (error) {
         console.error('Error saving session ID:', error);
     }
 }
 
 /**
- * Load current session ID
+ * Load current session ID from localStorage
  */
 function loadSessionId() {
     try {
-        const sessionId = sessionStorage.getItem(STORAGE_KEY_SESSION_ID);
+        const sessionId = localStorage.getItem(_scopedKey(STORAGE_KEY_SESSION_ID));
         if (sessionId) {
-            console.log('📂 Loaded session ID:', sessionId);
+            console.log('📂 Loaded session ID from localStorage:', sessionId);
             return sessionId;
         }
     } catch (error) {
@@ -100,21 +142,20 @@ function loadSessionId() {
 }
 
 /**
- * Get chat history formatted for API (last N messages only)
+ * Get chat history formatted for API context (last N messages)
  */
 function getChatHistoryForAPI(limit = 10) {
     const history = loadChatHistoryFromStorage();
-    // Return last N messages for context
     return history.slice(-limit);
 }
 
-// Export functions for use in chat.js
+// Export API
 window.chatStorage = {
-    save: saveChatHistoryToStorage,
-    load: loadChatHistoryFromStorage,
-    addMessage: addMessageToHistory,
-    clear: clearChatHistory,
+    save:          saveChatHistoryToStorage,
+    load:          loadChatHistoryFromStorage,
+    addMessage:    addMessageToHistory,
+    clear:         clearChatHistory,
     saveSessionId: saveSessionId,
     loadSessionId: loadSessionId,
-    getForAPI: getChatHistoryForAPI
+    getForAPI:     getChatHistoryForAPI
 };

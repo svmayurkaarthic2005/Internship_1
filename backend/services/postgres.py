@@ -355,32 +355,32 @@ async def get_application_detail(
         from sqlalchemy.orm import joinedload, selectinload
         query = select(Application).options(
             joinedload(Application.applicant),
-            joinedload(Application.survey_number),
-            selectinload(Application.application_sub_divisions).joinedload(ApplicationSubDivision.sub_division)
+            selectinload(Application.survey_number),
+            selectinload(Application.application_sub_divisions).joinedload(ApplicationSubDivision.sub_division),
+            selectinload(Application.field_visits)
         ).where(
             Application.application_number == application_number
         )
         
-        # If officer provided, verify jurisdiction access
+        # If officer provided, verify jurisdiction access using a subquery
+        # to avoid conflicting with selectinload on survey_number
         if officer:
             jurisdiction_filters = await get_jurisdiction_filter(db, officer)
             
             if jurisdiction_filters:
-                query = query.join(
-                    SurveyNumber, Application.survey_number_id == SurveyNumber.id
-                ).join(
-                    Block, SurveyNumber.block_id == Block.id
-                ).join(
-                    Ward, Block.ward_id == Ward.id
-                ).join(
-                    Town, Ward.town_id == Town.id
-                ).join(
-                    Taluk, Town.taluk_id == Taluk.id
-                ).join(
-                    District, Taluk.district_id == District.id
-                ).where(
-                    or_(*jurisdiction_filters)
+                # Use a subquery to check jurisdiction without interfering with eager loads
+                jurisdiction_subquery = (
+                    select(Application.id)
+                    .join(SurveyNumber, Application.survey_number_id == SurveyNumber.id)
+                    .join(Block, SurveyNumber.block_id == Block.id)
+                    .join(Ward, Block.ward_id == Ward.id)
+                    .join(Town, Ward.town_id == Town.id)
+                    .join(Taluk, Town.taluk_id == Taluk.id)
+                    .join(District, Taluk.district_id == District.id)
+                    .where(or_(*jurisdiction_filters))
+                    .scalar_subquery()
                 )
+                query = query.where(Application.id.in_(jurisdiction_subquery))
         
         result = await db.execute(query)
         app = result.scalar_one_or_none()
@@ -429,9 +429,12 @@ async def get_application_detail(
 
         # Survey totals for area comparison
         survey_total_area = float(app.survey_number.total_area_sqm) if app.survey_number and app.survey_number.total_area_sqm else None
-        proposed_total_area = sum(
-            sd["proposed_area_sqm"] for sd in proposed_sub_divisions if sd["proposed_area_sqm"]
-        ) if proposed_sub_divisions else None
+        # Sum proposed area — prefer explicit proposed_area_sqm; fall back to sub_division.area_sqm
+        proposed_total_area = None
+        if proposed_sub_divisions:
+            areas = [sd["proposed_area_sqm"] for sd in proposed_sub_divisions if sd["proposed_area_sqm"] is not None]
+            if areas:
+                proposed_total_area = sum(areas)
 
         # MERGE: build subdivisions_being_merged list
         subdivisions_being_merged = []
@@ -500,7 +503,7 @@ async def get_application_detail(
             "survey_no": app.survey_number.survey_no if app.survey_number else "N/A",
             "survey_total_area_sqm": survey_total_area,
             "proposed_total_area_sqm": proposed_total_area,
-            "area_match": abs(survey_total_area - proposed_total_area) < 0.01 if (survey_total_area and proposed_total_area) else None,
+            "area_match": abs(survey_total_area - proposed_total_area) < 1.0 if (survey_total_area and proposed_total_area) else None,
             # Application details
             "declared_reason": app.declared_reason,
             "sale_deed_number": app.sale_deed_number,
@@ -668,7 +671,7 @@ async def get_survey_owners(
                 "name": owner.name,
                 "name_tamil": owner.name_tamil,
                 "sub_division": subdivision.sub_division_no if subdivision else "Survey Level",
-                "ownership_share": ownership.ownership_share,
+                "ownership_share": float(ownership.ownership_share) if ownership.ownership_share else None,
                 "ownership_type": ownership.ownership_type,
                 "is_joint_owner": ownership.is_joint_owner
             })
@@ -753,7 +756,7 @@ async def get_field_visits(
     try:
         from sqlalchemy.orm import joinedload
         query = select(FieldVisit).options(
-            joinedload(FieldVisit.application).joinedload(Application.survey_number)
+            joinedload(FieldVisit.application).joinedload(Application.survey_number).joinedload(SurveyNumber.block)
         ).where(
             FieldVisit.officer_id == officer.officer_id
         )
@@ -764,18 +767,23 @@ async def get_field_visits(
         result = await db.execute(query)
         visits = result.scalars().all()
         
+        field_visits = []
+        for visit in visits:
+            app = visit.application
+            survey = app.survey_number if app else None
+            block = survey.block if survey else None
+            field_visits.append({
+                "application_number": app.application_number if app else "N/A",
+                "survey_no": survey.survey_no if survey else "N/A",
+                "block_number": block.block_number if block else None,
+                "application_type": app.application_type if app else "N/A",
+                "status": visit.status,
+                "field_visit_date": visit.scheduled_date.isoformat() if visit.scheduled_date else None
+            })
+        
         return {
-            "count": len(visits),
-            "field_visits": [
-                {
-                    "application_number": visit.application.application_number if visit.application else "N/A",
-                    "survey_no": visit.application.survey_number.survey_no if visit.application and visit.application.survey_number else "N/A",
-                    "application_type": visit.application.application_type if visit.application else "N/A",
-                    "status": visit.status,
-                    "field_visit_date": visit.scheduled_date.isoformat() if visit.scheduled_date else None
-                }
-                for visit in visits
-            ]
+            "count": len(field_visits),
+            "field_visits": field_visits
         }
     except Exception as e:
         logger.error(f"Error getting field visits: {e}")

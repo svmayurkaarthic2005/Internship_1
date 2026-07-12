@@ -31,8 +31,7 @@ async function initializeAuth() {
     // Check if already logged in (prevents flash of login page)
     await checkExistingSession();
     
-    // Only setup event listeners if still on login page
-    // Setup event listeners
+    // Only setup event listeners if elements exist
     if (loginForm) {
         loginForm.addEventListener('submit', handleLogin);
     }
@@ -89,8 +88,18 @@ async function checkExistingSession() {
  * Toggle password visibility
  */
 function togglePasswordVisibility() {
+    if (!passwordInput || !togglePasswordBtn) {
+        console.warn('Password input or toggle button not found');
+        return;
+    }
+    
     const passwordField = passwordInput;
     const toggleIcon = togglePasswordBtn.querySelector('.toggle-icon');
+    
+    if (!toggleIcon) {
+        console.warn('Toggle icon not found');
+        return;
+    }
     
     if (passwordField.type === 'password') {
         passwordField.type = 'text';

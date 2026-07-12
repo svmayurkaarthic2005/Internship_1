@@ -7,6 +7,99 @@
 const tableStates = new Map();
 
 /**
+ * Tamil column header translations.
+ * Used when data.language === 'ta'.
+ */
+const TAMIL_LABELS = {
+    // Applications table
+    'Application Number': 'விண்ணப்ப எண்',
+    'Type':               'வகை',
+    'Town':               'நகரம்',
+    'Ward':               'வார்டு',
+    'Status':             'நிலை',
+    'Stage':              'கட்டம்',
+    'Submitted Date':     'சமர்ப்பித்த தேதி',
+    // Field visits
+    'Survey Number':      'கணக்கெண்',
+    'Block':              'தொகுதி',
+    'Scheduled Date':     'திட்டமிடப்பட்ட தேதி',
+    // Survey table
+    'Survey No.':         'கணக்கெண்',
+    'Area (sqm)':         'பரப்பளவு (ச.மீ)',
+    'Land Type':          'நில வகை',
+    'Sub-Divisions':      'உட்பிரிவுகள்',
+    'Location Chain':     'இடம்',
+    // Owners table
+    'Owner Name':         'உரிமையாளர் பெயர்',
+    'Sub-Division':       'உட்பிரிவு',
+    'Ownership Share':    'உரிமை பங்கு',
+    'Ownership Type':     'உரிமை வகை',
+    'Joint Owner':        'கூட்டு உரிமையாளர்',
+    // Workload
+    'Metric':             'அளவீடு',
+    'Count':              'எண்ணிக்கை',
+    // Application detail
+    'Field':              'புலம்',
+    'Details':            'விவரங்கள்',
+    // Workflow
+    'Step':               'படி',
+    'From Stage':         'இருந்து கட்டம்',
+    'To Stage':           'கட்டம் வரை',
+    'Date':               'தேதி',
+    'Changed By':         'மாற்றியவர்',
+    'Note':               'குறிப்பு',
+    // Rejection
+    'Rejected By':        'நிராகரித்தவர்',
+    'Reason':             'காரணம்',
+    'Rejected On':        'நிராகரிக்கப்பட்ட தேதி',
+    'Resubmitted':        'மறு சமர்ப்பிப்பு',
+    // Jurisdiction
+    'Level':              'நிலை',
+    'Code / Number':      'குறியீடு / எண்',
+    'Name':               'பெயர்',
+    // FV detail table
+    'App No':             'விண்ணப்ப எண்',
+    'Applicant':          'விண்ணப்பதாரர்',
+    'Survey No':          'கணக்கெண்',
+    'Temp Sub Div (SIS)': 'தற்காலிக உட்பிரிவு (SIS)',
+    'Fixed Sub Div (DIS)':'நிரந்தர உட்பிரிவு (DIS)',
+    'Stage':              'கட்டம்',
+    'Days Pending':       'நிலுவையில் உள்ள நாட்கள்',
+    'Priority':           'முன்னுரிமை',
+    'Number':             'விண்ணப்ப எண்',
+};
+
+/**
+ * Translate a column header using TAMIL_LABELS if language is Tamil.
+ */
+function _th(label, isTamil) {
+    if (!isTamil) return label;
+    return TAMIL_LABELS[label] || label;
+}
+
+/**
+ * Translate column array
+ */
+function _translateCols(cols, isTamil) {
+    if (!isTamil) return cols;
+    return cols.map(c => _th(c, true));
+}
+
+/**
+ * Translate row keys from English to Tamil column names.
+ * Since rows use English keys matching the English column names,
+ * we rebuild the row with translated keys when isTamil is true.
+ */
+function _translateRow(row, engCols, tamCols) {
+    if (engCols === tamCols) return row; // no-op for English
+    const newRow = {};
+    engCols.forEach((eng, i) => {
+        newRow[tamCols[i]] = row[eng];
+    });
+    return newRow;
+}
+
+/**
  * Render structured data as a professional HTML table
  * @param {HTMLElement} container - Container element for the table
  * @param {Object} data - Structured data from backend
@@ -19,27 +112,31 @@ function renderDataTable(container, data) {
     // Clear container
     container.innerHTML = '';
 
+    // Always use English headers regardless of language so that
+    // status-badge logic (which keys on 'Status' / 'Stage') works correctly.
+    const isTamil = false;
+
     // Determine table type and prepare data
     let tableConfig = null;
 
     if (data.surveys_by_block) {
-        tableConfig = prepareSurveyTable(data);
+        tableConfig = prepareSurveyTable(data, isTamil);
     } else if (data.applications) {
-        tableConfig = prepareApplicationsTable(data);
+        tableConfig = prepareApplicationsTable(data, isTamil);
     } else if (data.field_visits) {
-        tableConfig = prepareFieldVisitsTable(data);
+        tableConfig = prepareFieldVisitsTable(data, isTamil);
     } else if (data.owners) {
-        tableConfig = prepareOwnersTable(data);
+        tableConfig = prepareOwnersTable(data, isTamil);
     } else if (data.workload) {
-        tableConfig = prepareWorkloadTable(data);
+        tableConfig = prepareWorkloadTable(data, isTamil);
     } else if (data.jurisdiction) {
-        tableConfig = prepareJurisdictionTable(data);
+        tableConfig = prepareJurisdictionTable(data, isTamil);
     } else if (data.rejections) {
-        tableConfig = prepareRejectionTable(data);
+        tableConfig = prepareRejectionTable(data, isTamil);
     } else if (data.history) {
-        tableConfig = prepareWorkflowTable(data);
+        tableConfig = prepareWorkflowTable(data, isTamil);
     } else if (data.application_number) {
-        tableConfig = prepareApplicationDetailTable(data);
+        tableConfig = prepareApplicationDetailTable(data, isTamil);
     }
 
     if (!tableConfig) {
@@ -59,7 +156,7 @@ function renderDataTable(container, data) {
 /**
  * Prepare survey numbers table configuration
  */
-function prepareSurveyTable(data) {
+function prepareSurveyTable(data, isTamil = false) {
     const rows = [];
     const hasJurisdiction = !!data.jurisdiction;
 
@@ -84,15 +181,15 @@ function prepareSurveyTable(data) {
         }
     }
 
-    const columns = ['Survey Number', 'Area (sqm)', 'Land Type', 'Sub-Divisions'];
-    if (hasJurisdiction) {
-        columns.push('Location Chain');
-    }
+    const engCols = ['Survey Number', 'Area (sqm)', 'Land Type', 'Sub-Divisions'];
+    if (hasJurisdiction) engCols.push('Location Chain');
+    const tamCols = _translateCols(engCols, isTamil);
+    const transRows = rows.map(r => _translateRow(r, engCols, tamCols));
 
     return {
         title: data.query_type || 'Survey Number Details',
-        columns: columns,
-        rows: rows,
+        columns: tamCols,
+        rows: transRows,
         icon: '📋'
     };
 }
@@ -100,7 +197,7 @@ function prepareSurveyTable(data) {
 /**
  * Prepare applications table configuration
  */
-function prepareApplicationsTable(data) {
+function prepareApplicationsTable(data, isTamil = false) {
     const apps = data.applications || [];
 
     // FV detail style (from fv_unassigned_awaiting / immediate_action)
@@ -110,24 +207,27 @@ function prepareApplicationsTable(data) {
         // === Single record: show as full detail card ===
         if (apps.length === 1) {
             const app = apps[0];
+            const engCols = ['Field', 'Value'];
+            const tamCols = _translateCols(engCols, isTamil);
+            const fld = (k) => _th(k, isTamil);
             const rows = [
-                { 'Field': 'Application No',          'Value': app.application_number  || 'N/A' },
-                { 'Field': 'Applicant Name',           'Value': app.applicant_name      || 'N/A' },
-                { 'Field': 'Survey No',                'Value': app.survey_no           || 'N/A' },
-                { 'Field': 'Temp Sub Div No (SIS)',    'Value': app.sis_temp_sub_div    || 'N/A' },
-                { 'Field': 'Fixed Sub Div No (DIS)',   'Value': app.dis_fixed_sub_div   || 'N/A' },
-                { 'Field': 'Town',                     'Value': app.town_name           || 'N/A' },
-                { 'Field': 'Ward',                     'Value': app.ward_number  ? `Ward ${app.ward_number}`   : 'N/A' },
-                { 'Field': 'Block',                    'Value': app.block_number ? `Block ${app.block_number}` : 'N/A' },
-                { 'Field': 'Current Stage',            'Value': app.current_stage   || 'N/A' },
-                { 'Field': 'Current Status',           'Value': app.current_status  || 'N/A' },
-                { 'Field': 'Submission Date',          'Value': app.submission_date ? new Date(app.submission_date).toLocaleDateString() : 'N/A' },
-                { 'Field': 'Days Pending',             'Value': app.days_pending ?? 'N/A' },
-                { 'Field': 'Priority',                 'Value': app.priority || 'Normal' },
+                { [tamCols[0]]: fld('App No'),                  [tamCols[1]]: app.application_number  || 'N/A' },
+                { [tamCols[0]]: fld('Applicant'),               [tamCols[1]]: app.applicant_name      || 'N/A' },
+                { [tamCols[0]]: fld('Survey No'),               [tamCols[1]]: app.survey_no           || 'N/A' },
+                { [tamCols[0]]: fld('Temp Sub Div (SIS)'),      [tamCols[1]]: app.sis_temp_sub_div    || 'N/A' },
+                { [tamCols[0]]: fld('Fixed Sub Div (DIS)'),     [tamCols[1]]: app.dis_fixed_sub_div   || 'N/A' },
+                { [tamCols[0]]: fld('Town'),                    [tamCols[1]]: app.town_name           || 'N/A' },
+                { [tamCols[0]]: fld('Ward'),                    [tamCols[1]]: app.ward_number  ? `Ward ${app.ward_number}`   : 'N/A' },
+                { [tamCols[0]]: fld('Block'),                   [tamCols[1]]: app.block_number ? `Block ${app.block_number}` : 'N/A' },
+                { [tamCols[0]]: fld('Stage'),                   [tamCols[1]]: app.current_stage   || 'N/A' },
+                { [tamCols[0]]: fld('Status'),                  [tamCols[1]]: app.current_status  || 'N/A' },
+                { [tamCols[0]]: fld('Submitted Date'),          [tamCols[1]]: app.submission_date ? new Date(app.submission_date).toLocaleDateString() : 'N/A' },
+                { [tamCols[0]]: fld('Days Pending'),            [tamCols[1]]: app.days_pending ?? 'N/A' },
+                { [tamCols[0]]: fld('Priority'),                [tamCols[1]]: app.priority || 'Normal' },
             ];
             return {
                 title: data.query_type || 'Application Details',
-                columns: ['Field', 'Value'],
+                columns: tamCols,
                 rows: rows,
                 icon: '📋',
                 disablePagination: true
@@ -135,46 +235,53 @@ function prepareApplicationsTable(data) {
         }
 
         // === Multiple records: show as wide table ===
-        const rows = apps.map(app => ({
-            'App No':                app.application_number || 'N/A',
-            'Applicant':             app.applicant_name     || 'N/A',
-            'Survey No':             app.survey_no          || 'N/A',
-            'Temp Sub Div (SIS)':    app.sis_temp_sub_div   || 'N/A',
-            'Fixed Sub Div (DIS)':   app.dis_fixed_sub_div  || 'N/A',
-            'Town':                  app.town_name          || 'N/A',
-            'Ward':                  app.ward_number  ? `Ward ${app.ward_number}`   : 'N/A',
-            'Block':                 app.block_number ? `Block ${app.block_number}` : 'N/A',
-            'Stage':                 app.current_stage  || 'N/A',
-            'Status':                app.current_status || 'N/A',
-            'Days Pending':          app.days_pending ?? 'N/A',
-            'Priority':              app.priority || 'Normal'
-        }));
+        const engCols = ['App No', 'Applicant', 'Survey No', 'Temp Sub Div (SIS)', 'Fixed Sub Div (DIS)',
+                         'Town', 'Ward', 'Block', 'Stage', 'Status', 'Days Pending', 'Priority'];
+        const tamCols = _translateCols(engCols, isTamil);
+        const rows = apps.map(app => {
+            const r = {
+                'App No':                app.application_number || 'N/A',
+                'Applicant':             app.applicant_name     || 'N/A',
+                'Survey No':             app.survey_no          || 'N/A',
+                'Temp Sub Div (SIS)':    app.sis_temp_sub_div   || 'N/A',
+                'Fixed Sub Div (DIS)':   app.dis_fixed_sub_div  || 'N/A',
+                'Town':                  app.town_name          || 'N/A',
+                'Ward':                  app.ward_number  ? `Ward ${app.ward_number}`   : 'N/A',
+                'Block':                 app.block_number ? `Block ${app.block_number}` : 'N/A',
+                'Stage':                 app.current_stage  || 'N/A',
+                'Status':                app.current_status || 'N/A',
+                'Days Pending':          app.days_pending ?? 'N/A',
+                'Priority':              app.priority || 'Normal'
+            };
+            return _translateRow(r, engCols, tamCols);
+        });
         return {
             title: data.query_type || 'Applications',
-            columns: ['App No', 'Applicant', 'Survey No', 'Temp Sub Div (SIS)', 'Fixed Sub Div (DIS)', 'Town', 'Ward', 'Block', 'Stage', 'Status', 'Days Pending', 'Priority'],
+            columns: tamCols,
             rows: rows,
             icon: '🗓️'
         };
     }
 
-
-
-    // Standard style (from pending / immediate action count queries)
-    const rows = apps.map(app => ({
-        'Application Number': app.application_number || 'N/A',
-        'Type': app.type || 'N/A',
-        'Town': app.town_name || 'N/A',
-        'Ward': app.ward_number ? `Ward ${app.ward_number}` : 'N/A',
-        'Status': app.status || 'Pending',
-        'Stage': app.current_stage || app.stage || 'N/A',
-        'Submitted Date': app.submission_date
-            ? new Date(app.submission_date).toLocaleDateString()
-            : 'N/A'
-    }));
+    // Standard style
+    const engCols = ['Application Number', 'Type', 'Town', 'Ward', 'Status', 'Stage', 'Submitted Date'];
+    const tamCols = _translateCols(engCols, isTamil);
+    const rows = apps.map(app => {
+        const r = {
+            'Application Number': app.application_number || 'N/A',
+            'Type':               app.type || 'N/A',
+            'Town':               app.town_name || 'N/A',
+            'Ward':               app.ward_number ? `Ward ${app.ward_number}` : 'N/A',
+            'Status':             app.status || 'Pending',
+            'Stage':              app.current_stage || app.stage || 'N/A',
+            'Submitted Date':     app.submission_date ? new Date(app.submission_date).toLocaleDateString() : 'N/A'
+        };
+        return _translateRow(r, engCols, tamCols);
+    });
 
     return {
         title: data.query_type || 'Pending Applications',
-        columns: ['Application Number', 'Type', 'Town', 'Ward', 'Status', 'Stage', 'Submitted Date'],
+        columns: tamCols,
         rows: rows,
         icon: '📄'
     };
@@ -183,21 +290,24 @@ function prepareApplicationsTable(data) {
 /**
  * Prepare field visits table configuration
  */
-function prepareFieldVisitsTable(data) {
-    const rows = data.field_visits.map(visit => ({
-        'Application Number': visit.application_number || 'N/A',
-        'Survey Number': visit.survey_no || 'N/A',
-        'Block': visit.block_number ? `Block ${visit.block_number}` : 'N/A',
-        'Type': visit.application_type || 'N/A',
-        'Status': visit.status || 'N/A',
-        'Scheduled Date': visit.field_visit_date 
-            ? new Date(visit.field_visit_date).toLocaleDateString() 
-            : 'Not Scheduled'
-    }));
+function prepareFieldVisitsTable(data, isTamil = false) {
+    const engCols = ['Application Number', 'Survey Number', 'Block', 'Type', 'Status', 'Scheduled Date'];
+    const tamCols = _translateCols(engCols, isTamil);
+    const rows = data.field_visits.map(visit => {
+        const r = {
+            'Application Number': visit.application_number || 'N/A',
+            'Survey Number':      visit.survey_no || 'N/A',
+            'Block':              visit.block_number ? `Block ${visit.block_number}` : 'N/A',
+            'Type':               visit.application_type || 'N/A',
+            'Status':             visit.status || 'N/A',
+            'Scheduled Date':     visit.field_visit_date ? new Date(visit.field_visit_date).toLocaleDateString() : 'Not Scheduled'
+        };
+        return _translateRow(r, engCols, tamCols);
+    });
 
     return {
         title: data.query_type || 'Field Visits',
-        columns: ['Application Number', 'Survey Number', 'Block', 'Type', 'Status', 'Scheduled Date'],
+        columns: tamCols,
         rows: rows,
         icon: '🗓️'
     };
@@ -206,18 +316,23 @@ function prepareFieldVisitsTable(data) {
 /**
  * Prepare owners table configuration
  */
-function prepareOwnersTable(data) {
-    const rows = data.owners.map(owner => ({
-        'Owner Name': owner.owner_name || owner.name || 'N/A',
-        'Sub-Division': owner.sub_division || 'Survey Level',
-        'Ownership Share': owner.ownership_share || 'N/A',
-        'Ownership Type': owner.ownership_type || 'N/A',
-        'Joint Owner': owner.is_joint_owner ? 'Yes' : 'No'
-    }));
+function prepareOwnersTable(data, isTamil = false) {
+    const engCols = ['Owner Name', 'Sub-Division', 'Ownership Share', 'Ownership Type', 'Joint Owner'];
+    const tamCols = _translateCols(engCols, isTamil);
+    const rows = data.owners.map(owner => {
+        const r = {
+            'Owner Name':      owner.owner_name || owner.name || 'N/A',
+            'Sub-Division':    owner.sub_division || 'Survey Level',
+            'Ownership Share': owner.ownership_share || 'N/A',
+            'Ownership Type':  owner.ownership_type || 'N/A',
+            'Joint Owner':     owner.is_joint_owner ? (isTamil ? 'ஆம்' : 'Yes') : (isTamil ? 'இல்லை' : 'No')
+        };
+        return _translateRow(r, engCols, tamCols);
+    });
 
     return {
         title: data.query_type || `Survey ${data.survey_no || ''} Owners`,
-        columns: ['Owner Name', 'Sub-Division', 'Ownership Share', 'Ownership Type', 'Joint Owner'],
+        columns: tamCols,
         rows: rows,
         icon: '👤'
     };
@@ -227,7 +342,7 @@ function prepareOwnersTable(data) {
  * Renders the SIS officer's assigned jurisdiction as a table.
  * Hierarchy: District → Taluk → Town → Ward → Block
  */
-function prepareJurisdictionTable(data) {
+function prepareJurisdictionTable(data, isTamil = false) {
     const j = data.jurisdiction || {};
     const district = j.district || {};
     const taluk = j.taluk || {};
@@ -295,8 +410,9 @@ function prepareJurisdictionTable(data) {
 
     return {
         title: data.query_type || 'Jurisdiction Summary',
-        columns: ['Level', 'Code / Number', 'Name', 'Count'],
-        rows: rows,
+        columns: _translateCols(['Level', 'Code / Number', 'Name', 'Count'], isTamil),
+        rows: rows.map(r => _translateRow(r, ['Level', 'Code / Number', 'Name', 'Count'],
+                                            _translateCols(['Level', 'Code / Number', 'Name', 'Count'], isTamil))),
         icon: '🗺️',
         disablePagination: true
     };
@@ -305,21 +421,22 @@ function prepareJurisdictionTable(data) {
 /**
  * Renders rejection history for an application.
  */
-function prepareRejectionTable(data) {
-    const rows = (data.rejections || []).map(r => ({
-        'Rejected By': r.source || 'N/A',
-        'Reason': r.reason_text || 'N/A',
-        'Rejected On': r.rejected_at 
-            ? new Date(r.rejected_at).toLocaleDateString() 
-            : 'N/A',
-        'Resubmitted': r.resubmitted_at 
-            ? new Date(r.resubmitted_at).toLocaleDateString() 
-            : 'Not yet'
-    }));
+function prepareRejectionTable(data, isTamil = false) {
+    const engCols = ['Rejected By', 'Reason', 'Rejected On', 'Resubmitted'];
+    const tamCols = _translateCols(engCols, isTamil);
+    const rows = (data.rejections || []).map(r => {
+        const row = {
+            'Rejected By': r.source || 'N/A',
+            'Reason':      r.reason_text || 'N/A',
+            'Rejected On': r.rejected_at ? new Date(r.rejected_at).toLocaleDateString() : 'N/A',
+            'Resubmitted': r.resubmitted_at ? new Date(r.resubmitted_at).toLocaleDateString() : 'Not yet'
+        };
+        return _translateRow(row, engCols, tamCols);
+    });
 
     return {
         title: data.query_type || `Rejections — ${data.application_number || ''}`,
-        columns: ['Rejected By', 'Reason', 'Rejected On', 'Resubmitted'],
+        columns: tamCols,
         rows: rows,
         icon: '❌',
         disablePagination: true
@@ -329,21 +446,24 @@ function prepareRejectionTable(data) {
 /**
  * Renders workflow stage history for an application.
  */
-function prepareWorkflowTable(data) {
-    const rows = (data.history || []).map((h, i) => ({
-        'Step': i + 1,
-        'From Stage': h.from_stage || '—',
-        'To Stage': h.to_stage || 'N/A',
-        'Date': h.changed_at 
-            ? new Date(h.changed_at).toLocaleDateString() 
-            : 'N/A',
-        'Changed By': h.changed_by_name || 'System',
-        'Note': h.note || '—'
-    }));
+function prepareWorkflowTable(data, isTamil = false) {
+    const engCols = ['Step', 'From Stage', 'To Stage', 'Date', 'Changed By', 'Note'];
+    const tamCols = _translateCols(engCols, isTamil);
+    const rows = (data.history || []).map((h, i) => {
+        const row = {
+            'Step':       i + 1,
+            'From Stage': h.from_stage || '—',
+            'To Stage':   h.to_stage || 'N/A',
+            'Date':       h.changed_at ? new Date(h.changed_at).toLocaleDateString() : 'N/A',
+            'Changed By': h.changed_by_name || 'System',
+            'Note':       h.note || '—'
+        };
+        return _translateRow(row, engCols, tamCols);
+    });
 
     return {
         title: data.query_type || `Workflow — ${data.application_number || ''}`,
-        columns: ['Step', 'From Stage', 'To Stage', 'Date', 'Changed By', 'Note'],
+        columns: tamCols,
         rows: rows,
         icon: '🔄',
         disablePagination: rows.length <= 10
@@ -353,17 +473,19 @@ function prepareWorkflowTable(data) {
 /**
  * Prepare workload table configuration
  */
-function prepareWorkloadTable(data) {
+function prepareWorkloadTable(data, isTamil = false) {
     const w = data.workload || {};
+    const engCols = ['Metric', 'Count'];
+    const tamCols = _translateCols(engCols, isTamil);
     const rows = [
-        { 'Metric': 'Total Applications', 'Count': w.total_applications || 0 },
-        { 'Metric': 'Pending Applications', 'Count': w.pending_applications || 0 },
-        { 'Metric': 'Completed Applications', 'Count': w.completed_applications || 0 }
-    ];
+        { 'Metric': isTamil ? 'மொத்த விண்ணப்பங்கள்'       : 'Total Applications',     'Count': w.total_applications || 0 },
+        { 'Metric': isTamil ? 'நிலுவையில் உள்ள விண்ணப்பங்கள்' : 'Pending Applications',   'Count': w.pending_applications || 0 },
+        { 'Metric': isTamil ? 'முடிந்த விண்ணப்பங்கள்'       : 'Completed Applications',  'Count': w.completed_applications || 0 }
+    ].map(r => _translateRow(r, engCols, tamCols));
 
     return {
         title: data.query_type || 'Workload Summary',
-        columns: ['Metric', 'Count'],
+        columns: tamCols,
         rows: rows,
         icon: '📊',
         disablePagination: true
@@ -373,28 +495,66 @@ function prepareWorkloadTable(data) {
 /**
  * Prepare single application and applicant details table configuration
  */
-function prepareApplicationDetailTable(data) {
+function prepareApplicationDetailTable(data, isTamil = false) {
+    const fld = isTamil ? {
+        appNo:          'விண்ணப்ப எண்',
+        type:           'வகை',
+        subdivisions:   'உட்பிரிவுகள்',
+        status:         'நிலை',
+        stage:          'கட்டம்',
+        submDate:       'சமர்ப்பித்த தேதி',
+        fieldVisit:     'கள ஆய்வு திட்டமிடல்',
+        overdue:        'காலதாமதம்',
+        priority:       'முன்னுரிமை',
+        applicantName:  'விண்ணப்பதாரர் பெயர்',
+        mobile:         'கைபேசி',
+        email:          'மின்னஞ்சல்',
+        address:        'முகவரி',
+        aadhaar:        'ஆதார் (கடைசி 4)',
+        reason:         'அறிவிக்கப்பட்ட காரணம்',
+        fieldCol:       'புலம்',
+        detailCol:      'விவரங்கள்',
+    } : {
+        appNo:          'Application Number',
+        type:           'Application Type',
+        subdivisions:   'Included Sub-divisions',
+        status:         'Current Status',
+        stage:          'Current Stage',
+        submDate:       'Submission Date',
+        fieldVisit:     'Field Visit Scheduled',
+        overdue:        'Overdue',
+        priority:       'Priority Flag',
+        applicantName:  'Applicant Name',
+        mobile:         'Applicant Mobile',
+        email:          'Applicant Email',
+        address:        'Applicant Address',
+        aadhaar:        'Aadhaar (Last 4)',
+        reason:         'Declared Reason',
+        fieldCol:       'Field',
+        detailCol:      'Details',
+    };
+
     const rows = [
-        { 'Field': 'Application Number', 'Details': data.application_number || 'N/A' },
-        { 'Field': 'Application Type', 'Details': data.type || 'N/A' },
-        { 'Field': 'Included Sub-divisions', 'Details': data.included_subdivisions || 'N/A' },
-        { 'Field': 'Current Status', 'Details': data.status || 'N/A' },
-        { 'Field': 'Current Stage', 'Details': data.stage || 'N/A' },
-        { 'Field': 'Submission Date', 'Details': data.submission_date ? new Date(data.submission_date).toLocaleDateString() : 'N/A' },
-        { 'Field': 'Field Visit Scheduled', 'Details': data.field_visit_scheduled ? `Yes (${data.field_visit_date ? new Date(data.field_visit_date).toLocaleDateString() : 'N/A'})` : 'No' },
-        { 'Field': 'Overdue', 'Details': data.is_overdue ? 'Yes' : 'No' },
-        { 'Field': 'Priority Flag', 'Details': data.priority_flag ? 'Yes' : 'No' },
-        { 'Field': 'Applicant Name', 'Details': data.applicant_name || 'N/A' },
-        { 'Field': 'Applicant Mobile', 'Details': data.applicant_mobile || 'N/A' },
-        { 'Field': 'Applicant Email', 'Details': data.applicant_email || 'N/A' },
-        { 'Field': 'Applicant Address', 'Details': data.applicant_address || 'N/A' },
-        { 'Field': 'Aadhaar (Last 4)', 'Details': data.applicant_aadhaar_last4 || 'N/A' },
-        { 'Field': 'Declared Reason', 'Details': data.declared_reason || 'N/A' }
+        { [fld.fieldCol]: fld.appNo,        [fld.detailCol]: data.application_number || 'N/A' },
+        { [fld.fieldCol]: fld.type,         [fld.detailCol]: data.type || 'N/A' },
+        { [fld.fieldCol]: fld.subdivisions, [fld.detailCol]: data.included_subdivisions || 'N/A' },
+        { [fld.fieldCol]: fld.status,       [fld.detailCol]: data.status || 'N/A' },
+        { [fld.fieldCol]: fld.stage,        [fld.detailCol]: data.stage || 'N/A' },
+        { [fld.fieldCol]: fld.submDate,     [fld.detailCol]: data.submission_date ? new Date(data.submission_date).toLocaleDateString() : 'N/A' },
+        { [fld.fieldCol]: fld.fieldVisit,   [fld.detailCol]: data.field_visit_scheduled ? `${isTamil ? 'ஆம்' : 'Yes'} (${data.field_visit_date ? new Date(data.field_visit_date).toLocaleDateString() : 'N/A'})` : (isTamil ? 'இல்லை' : 'No') },
+        { [fld.fieldCol]: fld.overdue,      [fld.detailCol]: data.is_overdue ? (isTamil ? 'ஆம்' : 'Yes') : (isTamil ? 'இல்லை' : 'No') },
+        { [fld.fieldCol]: fld.priority,     [fld.detailCol]: data.priority_flag ? (isTamil ? 'ஆம்' : 'Yes') : (isTamil ? 'இல்லை' : 'No') },
+        { [fld.fieldCol]: fld.applicantName,[fld.detailCol]: data.applicant_name || 'N/A' },
+        { [fld.fieldCol]: fld.mobile,       [fld.detailCol]: data.applicant_mobile || 'N/A' },
+        { [fld.fieldCol]: fld.email,        [fld.detailCol]: data.applicant_email || 'N/A' },
+        { [fld.fieldCol]: fld.address,      [fld.detailCol]: data.applicant_address || 'N/A' },
+        { [fld.fieldCol]: fld.aadhaar,      [fld.detailCol]: data.applicant_aadhaar_last4 || 'N/A' },
+        { [fld.fieldCol]: fld.reason,       [fld.detailCol]: formatDeclaredReason(data.declared_reason) || 'N/A' }
     ];
 
     return {
         title: data.query_type || 'Application & Applicant Details',
-        columns: ['Field', 'Details'],
+        columns: [fld.fieldCol, fld.detailCol],
         rows: rows,
         icon: '📋',
         disablePagination: true
@@ -661,6 +821,26 @@ window.copyTableData = function(button) {
         console.error('Failed to copy table data:', err);
     });
 };
+
+/**
+ * Format a declared_reason enum value into a human-readable label.
+ * e.g. "gift_deed" → "Gift Deed", "inheritance" → "Inheritance"
+ */
+function formatDeclaredReason(value) {
+    if (!value || value === 'N/A') return value || 'N/A';
+    const map = {
+        'sale':        'Sale',
+        'inheritance': 'Inheritance',
+        'partition':   'Partition',
+        'gift_deed':   'Gift Deed',
+        'court_order': 'Court Order',
+        'government':  'Government Acquisition',
+        'exchange':    'Exchange',
+        'will':        'Will / Testament',
+    };
+    const key = String(value).toLowerCase().trim();
+    return map[key] || String(value).replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+}
 
 /**
  * Escape HTML special characters

@@ -167,6 +167,22 @@ def format_structured_data_for_llm(structured_data: Dict[str, Any]) -> str:
         if key not in skip and not isinstance(value, (list, dict)):
             lines.append(f"{key}: {value}")
 
+    # Explicitly include merge-specific fields that the LLM needs for
+    # conversational answers about subdivision contents.
+    if structured_data.get("survey_no"):
+        if "survey_no" not in str(lines):   # avoid duplicate if already added above
+            lines.append(f"survey_no: {structured_data['survey_no']}")
+
+    subdivisions = structured_data.get("subdivisions_being_merged") or []
+    if subdivisions:
+        lines.append(f"subdivisions_being_merged ({len(subdivisions)}):")
+        for sd in subdivisions:
+            area_str = f" — {sd['area_sqm']:.2f} sq.m" if sd.get("area_sqm") else ""
+            lines.append(f"  • {sd.get('sub_division_no', 'N/A')}{area_str}")
+        total = structured_data.get("total_merge_area_sqm")
+        if total:
+            lines.append(f"total_merge_area_sqm: {total:.2f}")
+
     if structured_data.get("message"):
         lines.append(f"Note: {structured_data['message']}")
 
@@ -181,14 +197,13 @@ def _e(value) -> str:
     return escape(str(value)) if value is not None else "-"
 
 
-# Human-readable labels for DB status values
-_STATUS_LABELS = {
+# Human-readable labels for DB status values — keyed by language
+_STATUS_LABELS_EN = {
     "pending":     "Pending",
     "in_progress": "In Progress",
     "approved":    "Approved",
     "rejected":    "Rejected",
     "escalated":   "Escalated",
-    # field visit statuses
     "unscheduled": "Unscheduled",
     "scheduled":   "Scheduled",
     "completed":   "Completed",
@@ -197,11 +212,50 @@ _STATUS_LABELS = {
     "cancelled":   "Cancelled",
 }
 
+_STATUS_LABELS_TA = {
+    "pending":     "நிலுவையில்",
+    "in_progress": "செயலில்",
+    "approved":    "அங்கீகரிக்கப்பட்டது",
+    "rejected":    "நிராகரிக்கப்பட்டது",
+    "escalated":   "மேல்முறையீடு",
+    "unscheduled": "திட்டமிடப்படவில்லை",
+    "scheduled":   "திட்டமிடப்பட்டது",
+    "completed":   "முடிந்தது",
+    "overdue":     "காலதாமதம்",
+    "rescheduled": "மறு-திட்டமிடல்",
+    "cancelled":   "ரத்து செய்யப்பட்டது",
+}
 
-def _status(value) -> str:
-    """Return a human-readable, HTML-escaped status label."""
+# kept for backward-compat; build_html_response uses _status_lang() instead
+_STATUS_LABELS = _STATUS_LABELS_EN
+
+
+def _status(value, lang: str = "en") -> str:
+    """Return a human-readable, HTML-escaped status label in the given language."""
     raw = str(value).lower() if value is not None else ""
-    return escape(_STATUS_LABELS.get(raw, str(value) if value is not None else "-"))
+    labels = _STATUS_LABELS_TA if lang == "ta" else _STATUS_LABELS_EN
+    return escape(labels.get(raw, str(value) if value is not None else "-"))
+
+
+# Human-readable labels for declared_reason enum values
+_REASON_LABELS = {
+    "sale":        "Sale",
+    "inheritance": "Inheritance",
+    "partition":   "Partition",
+    "gift_deed":   "Gift Deed",
+    "court_order": "Court Order",
+    "government":  "Government Acquisition",
+    "exchange":    "Exchange",
+    "will":        "Will / Testament",
+}
+
+
+def _reason(value) -> str:
+    """Return a human-readable, HTML-escaped declared_reason label."""
+    if value is None:
+        return "-"
+    raw = str(value).lower().strip()
+    return escape(_REASON_LABELS.get(raw, str(value).replace("_", " ").title()))
 
 
 def build_html_response(structured_data: Dict[str, Any], language: str = "en") -> str:
@@ -271,7 +325,7 @@ def build_html_response(structured_data: Dict[str, Any], language: str = "en") -
             "district": "மாவட்டம்", "taluk": "தாலுகா", "town": "நகரம்",
             "ward": "வார்டு", "block": "தொகுதி", "area_sqm": "பரப்பளவு (சதுர மீ)",
             "application_no": "விண்ணப்ப எண்", "type": "வகை",
-            "status": "நிலை", "stage": "நிலை", "submitted": "சமர்ப்பிக்கப்பட்டது",
+            "status": "நிலை", "stage": "கட்டம்", "submitted": "சமர்ப்பிக்கப்பட்டது",
             "submission_date": "சமர்ப்பித்த தேதி",
             "days_pending": "நிலுவையில் உள்ள நாட்கள்",
             "field": "புலம்", "value": "மதிப்பு",
@@ -311,9 +365,13 @@ def build_html_response(structured_data: Dict[str, Any], language: str = "en") -
         },
     }
 
-    # For tanglish, use English labels
-    lang = "ta" if language == "ta" else "en"
+    # Always use English column headers regardless of the user's language.
+    # Tamil/Tanglish users get English table headers so the frontend
+    # status-badge logic (keyed on 'Status' / 'Stage') works correctly.
+    lang = "en"
     t = labels[lang]
+
+    logger.info(f"build_html_response: language={language!r} -> lang={lang!r}, keys={list(structured_data.keys())}")
 
     # ── Surveys in jurisdiction ──────────────────────────────────────
     if "surveys" in structured_data and isinstance(structured_data["surveys"], list):
@@ -369,13 +427,14 @@ def build_html_response(structured_data: Dict[str, Any], language: str = "en") -
                 subdiv_list = ", ".join(sd["sub_division_no"] for sd in subdivisions) if subdivisions else "-"
                 subdiv_list = _e(subdiv_list)
 
+                merge_area = f"{app['total_merge_area_sqm']:.2f}" if app.get('total_merge_area_sqm') else 'N/A'
                 rows += (
                     f"<tr>"
                     f"<td>{_e(app.get('application_number'))}</td>"
                     f"<td>{_e(app.get('survey_no'))}</td>"
                     f"<td>{subdiv_list}</td>"
-                    f"<td>{ f\"{app['total_merge_area_sqm']:.2f}\" if app.get('total_merge_area_sqm') else 'N/A' }</td>"
-                    f"<td>{_status(app.get('status'))}</td>"
+                    f"<td>{merge_area}</td>"
+                    f"<td>{_status(app.get('status'), lang)}</td>"
                     f"<td>{_e(app.get('stage'))}</td>"
                     f"<td>{_e(app.get('submission_date'))}</td>"
                     f"<td>{_e(jur.get('district'))}</td>"
@@ -402,7 +461,7 @@ def build_html_response(structured_data: Dict[str, Any], language: str = "en") -
                     f"<tr>"
                     f"<td>{_e(app.get('application_number'))}</td>"
                     f"<td>{_e(app.get('type'))}</td>"
-                    f"<td>{_status(app.get('status'))}{overdue}</td>"
+                    f"<td>{_status(app.get('status'), lang)}{overdue}</td>"
                     f"<td>{_e(app.get('stage'))}</td>"
                     f"<td>{_e(app.get('submission_date'))}</td>"
                     f"</tr>"
@@ -502,41 +561,54 @@ def build_html_response(structured_data: Dict[str, Any], language: str = "en") -
             submission_channel_display = "Not specified" if lang == "en" else "குறிப்பிடப்படவில்லை"
 
         optional_rows = ""
-        if app.get("survey_no"):
-            optional_rows += f"<tr><td><strong>{t['survey_number']}</strong></td><td>{_e(app.get('survey_no'))}</td></tr>"
         if submission_channel:
             optional_rows += f"<tr><td><strong>{t['submitted_via']}</strong></td><td>{submission_channel_display}</td></tr>"
         if app.get("sale_deed_number"):
             optional_rows += f"<tr><td><strong>{t['sale_deed_number']}</strong></td><td>{_e(app.get('sale_deed_number'))}</td></tr>"
             optional_rows += f"<tr><td><strong>{t['sale_deed_registered']}</strong></td><td>{t['yes'] if app.get('sale_deed_registered') else t['no']}</td></tr>"
         if app.get("declared_reason"):
-            optional_rows += f"<tr><td><strong>{t['declared_reason']}</strong></td><td>{_e(app.get('declared_reason'))}</td></tr>"
+            optional_rows += f"<tr><td><strong>{t['declared_reason']}</strong></td><td>{_reason(app.get('declared_reason'))}</td></tr>"
 
+        # ── MERGE: build subdivisions block ──────────────────────────
         merge_info_html = ""
-        if app.get("type") == "MERGE" and "subdivisions_being_merged" in app:
-            subdivisions = app["subdivisions_being_merged"]
+        if app.get("type") == "MERGE":
+            subdivisions = app.get("subdivisions_being_merged") or []
+            survey_no    = app.get("survey_no") or "-"
             if subdivisions:
                 total_area = app.get("total_merge_area_sqm", 0)
-                subdiv_details = [
-                    f"{_e(sd['sub_division_no'])} ({sd['area_sqm']:.2f} sq.m)"
-                    if sd.get('area_sqm') else _e(sd['sub_division_no'])
+                # Each sub-div on its own line with area
+                subdiv_rows_html = "".join(
+                    (
+                        f"<div style='margin:3px 0;'>• {_e(sd['sub_division_no'])}"
+                        f" — {sd['area_sqm']:.2f} sq.m</div>"
+                    ) if sd.get('area_sqm') else (
+                        f"<div style='margin:3px 0;'>• {_e(sd['sub_division_no'])}</div>"
+                    )
                     for sd in subdivisions
-                ]
-                subdiv_list = ", ".join(subdiv_details)
+                )
+                total_area_str = f"{total_area:.2f} sq.m" if total_area else "-"
                 merge_info_html = (
-                    f"<tr><td colspan='2' style='background-color: #f0f8ff; padding: 10px; border-left: 4px solid #0066cc;'>"
-                    f"<strong>📋 {t['subdivisions_being_merged']}:</strong><br>"
-                    f"<div style='margin: 5px 0;'>{subdiv_list}</div>"
-                    f"<strong>📊 {t['total_merge_area']}:</strong> "
-                    f"{ f'{total_area:.2f} sq.m' if total_area else '-' }<br>"
-                    f"<strong>🔢 {t['number_of_subdivisions']}:</strong> {len(subdivisions)}"
+                    f"<tr><td colspan='2' style='background:#f0f8ff;padding:10px;"
+                    f"border-left:4px solid #0066cc;'>"
+                    f"<strong>📍 {t['survey_no']}:</strong> {_e(survey_no)}<br><br>"
+                    f"<strong>📋 {t['subdivisions_being_merged']} ({len(subdivisions)}):</strong><br>"
+                    f"{subdiv_rows_html}"
+                    f"<br><strong>📊 {t['total_merge_area']}:</strong> {total_area_str}"
                     f"</td></tr>"
+                )
+            else:
+                # No subdivisions linked yet — still show survey number
+                merge_info_html = (
+                    f"<tr><td><strong>📍 {t['survey_no']}</strong></td>"
+                    f"<td>{_e(survey_no)}</td></tr>"
+                    f"<tr><td><strong>{t['subdivisions_being_merged']}</strong></td>"
+                    f"<td>Not yet assigned</td></tr>"
                 )
 
         field_visit_rows = ""
         if "field_visit" in app and app["field_visit"]:
             fv = app["field_visit"]
-            fv_status = _status(fv.get("status"))
+            fv_status = _status(fv.get("status"), lang)
             field_visit_rows = f"<tr><td><strong>{t['field_visit_status']}</strong></td><td>{fv_status}</td></tr>"
             if fv.get("scheduled_date"):
                 field_visit_rows += f"<tr><td><strong>{t['scheduled_date']}</strong></td><td>{_e(fv.get('scheduled_date'))}</td></tr>"
@@ -546,19 +618,44 @@ def build_html_response(structured_data: Dict[str, Any], language: str = "en") -
                 field_visit_rows += f"<tr><td><strong>{t['encroachment_found']}</strong></td><td>{t['yes'] if fv.get('encroachment_found') else t['no']}</td></tr>"
                 field_visit_rows += f"<tr><td><strong>{t['area_verified']}</strong></td><td>{t['yes'] if fv.get('area_verified') else t['no']}</td></tr>"
 
+        # For MERGE apps put the merge block (survey + subdivisions) FIRST,
+        # then status/stage, then applicant contact, then optional rows.
+        # For non-MERGE apps keep the original order.
+        is_merge_app = app.get("type") == "MERGE"
+
+        if is_merge_app:
+            body_rows = (
+                f"{merge_info_html}"
+                f"<tr><td><strong>{t['type']}</strong></td><td>{_e(app.get('type'))}</td></tr>"
+                f"<tr><td><strong>{t['status']}</strong></td><td>{_status(app.get('status'), lang)}</td></tr>"
+                f"<tr><td><strong>{t['stage']}</strong></td><td>{_e(app.get('stage'))}</td></tr>"
+                f"<tr><td><strong>{t['submission_date']}</strong></td><td>{_e(app.get('submission_date'))}</td></tr>"
+                f"{optional_rows}"
+                f"{applicant_rows}"
+                f"{field_visit_rows}"
+            )
+        else:
+            survey_row = (
+                f"<tr><td><strong>{t['survey_number']}</strong></td><td>{_e(app.get('survey_no'))}</td></tr>"
+                if app.get("survey_no") else ""
+            )
+            body_rows = (
+                f"{applicant_rows}"
+                f"<tr><td><strong>{t['type']}</strong></td><td>{_e(app.get('type'))}</td></tr>"
+                f"<tr><td><strong>{t['status']}</strong></td><td>{_status(app.get('status'), lang)}</td></tr>"
+                f"<tr><td><strong>{t['stage']}</strong></td><td>{_e(app.get('stage'))}</td></tr>"
+                f"<tr><td><strong>{t['submission_date']}</strong></td><td>{_e(app.get('submission_date'))}</td></tr>"
+                f"{survey_row}"
+                f"{optional_rows}"
+                f"{field_visit_rows}"
+            )
+
         return (
             f"<div class='table-intro'><strong>{t['application_details']}: {_e(app['application_number'])}</strong>{overdue_flag}{priority_flag}</div>"
             f"<table class='data-table'>"
             f"<thead><tr><th>{t['field']}</th><th>{t['value']}</th></tr></thead>"
             f"<tbody>"
-            f"{applicant_rows}"
-            f"<tr><td><strong>{t['type']}</strong></td><td>{_e(app.get('type'))}</td></tr>"
-            f"<tr><td><strong>{t['status']}</strong></td><td>{_status(app.get('status'))}</td></tr>"
-            f"<tr><td><strong>{t['stage']}</strong></td><td>{_e(app.get('stage'))}</td></tr>"
-            f"<tr><td><strong>{t['submission_date']}</strong></td><td>{_e(app.get('submission_date'))}</td></tr>"
-            f"{optional_rows}"
-            f"{merge_info_html}"
-            f"{field_visit_rows}"
+            f"{body_rows}"
             f"</tbody>"
             f"</table>"
         )
@@ -588,7 +685,7 @@ def build_html_response(structured_data: Dict[str, Any], language: str = "en") -
             f"<tr>"
             f"<td>{_e(v.get('application_number'))}</td>"
             f"<td>{_e(v.get('type'))}</td>"
-            f"<td>{_status(v.get('status'))}</td>"
+            f"<td>{_status(v.get('status'), lang)}</td>"
             f"<td>{_e(v.get('stage'))}</td>"
             f"<td>{_e(v.get('submission_date'))}</td>"
             f"<td>{_e(v.get('days_since_submission'))} {'days' if lang == 'en' else 'நாட்கள்'}</td>"
@@ -616,7 +713,8 @@ def build_prompt(
     context: str,
     structured_data: Dict[str, Any],
     language: str,
-    chat_history: list = None
+    chat_history: list = None,
+    direct_answer: bool = False
 ) -> str:
     """
     Build the LLM prompt. Only called when build_html_response returned "".
@@ -628,14 +726,57 @@ def build_prompt(
         structured_data: Structured data from database queries
         language: Detected language ("en", "ta", or "tanglish")
         chat_history: List of previous messages for conversation context
+        direct_answer: When True, instruct LLM to answer the question directly
+                       from the data rather than presenting a generic summary.
     """
     language_instruction = {
         "en": "CRITICAL: You MUST respond in English language only.",
         "ta": "CRITICAL: You MUST respond in Tamil language only.",
         "tanglish": "CRITICAL: You MUST respond in the same mixed Tamil-English style (Tanglish) that the user used."
     }.get(language, "CRITICAL: You MUST respond in English language only.")
+    
+    # Auto-detect if this is a specific field query that needs direct answer
+    query_lower = query.lower()
+    field_query_keywords = [
+        "name", "பெயர்", "applicant name", "விண்ணப்பதாரர் பெயர்",
+        "mobile", "phone", "தொலைபேசி", "எண்",
+        "email", "மின்னஞ்சல்",
+        "address", "முகவரி",
+        "status", "நிலை",
+        "stage", "கட்டம்",
+        "date", "தேதி",
+        "survey number", "கணக்கெண்",
+    ]
+    
+    is_specific_field_query = any(kw in query_lower for kw in field_query_keywords) and \
+                              any(w in query_lower for w in ["what", "என்ன", "யார்", "who", "எது", "which", "எப்போது", "when"])
+    
+    # When the caller bypassed the HTML table path (interrogative queries),
+    # we inject a focused instruction so the LLM directly answers the question
+    # instead of producing a generic summary.
+    direct_answer_instruction = ""
+    if direct_answer or is_specific_field_query:
+        direct_answer_instruction = """
+IMPORTANT — DIRECT ANSWER MODE:
+The user asked a specific question about a particular field or detail. Answer ONLY that question using the
+structured data provided below. Do NOT summarise all fields. Do NOT produce a table. 
+Write 1-2 plain sentences that directly answer what was asked.
 
-    system_instruction = f"""{language_instruction}
+Examples of GOOD direct answers:
+- Q: "What is the applicant name?" / "விண்ணப்பதாரர் பெயர் என்ன?"
+  A: "The applicant name for APP-2024-000001 is Applicant 1." / "APP-2024-000001 விண்ணப்பதாரர் பெயர் Applicant 1."
+
+- Q: "Which sub-divisions are included?"
+  A: "Merge application APP-2024-000004 includes 3 sub-divisions: 145/1A (600.00 sq.m), 145/1B (700.00 sq.m), and 145/1C (650.00 sq.m)."
+
+- Q: "What is the status?" / "நிலை என்ன?"
+  A: "The application status is Pending." / "விண்ணப்பம் நிலுவையில் உள்ளது."
+
+Example of BAD answer (do NOT do this):
+  "Here are the details for APP-2024-000004. Type: MERGE, Status: Approved, Applicant Name: John..."
+"""
+
+    system_instruction = f"""{language_instruction}{direct_answer_instruction}
 
 You are a friendly AI assistant for Sub Inspector Surveyor (SIS) officers of Tamil Nadu.
 
@@ -644,6 +785,20 @@ Your responsibilities:
 - Provide accurate information using ONLY the structured database data or RAG context provided.
 - NEVER invent, assume, or generate any data that is not explicitly provided.
 - Be conversational and helpful, but stay focused on SIS work.
+
+CRITICAL APPLICATION TYPE DEFINITIONS:
+1. **ISD (Involving Sub-Division)**: Creates NEW sub-divisions when dividing land into smaller parcels
+   - Example: Survey 145 (1000 sq.m) → 145/1 (600 sq.m) + 145/2 (400 sq.m)
+   - Requires field visit and new sub-division numbering
+   
+2. **NISD (Not Involving Sub-Division)**: Only transfers ownership, NO sub-divisions created
+   - Survey number and boundaries remain unchanged
+   - Only patta holder name changes
+   
+3. **MERGE**: Combines multiple sub-divisions or surveys into ONE survey number
+   - Example: 145/1 (300 sq.m) + 145/2 (400 sq.m) → Survey 145 (700 sq.m)
+   - Reduces the number of separate parcels
+   - Lists which sub-divisions are being merged together
 
 CONVERSATION CONTEXT:
 - You have access to previous messages in this conversation.
@@ -663,8 +818,8 @@ HANDLING DIFFERENT TYPES OF QUERIES:
    - Explain that you don't have that specific information
    - Suggest what they can ask about instead
 4. **SIS-specific queries with data**:
-   - Present the data clearly using HTML tables for structured information
-   - Be concise and professional
+   - If in DIRECT ANSWER MODE: answer only what was asked in plain sentences.
+   - Otherwise: present the data clearly and be concise and professional.
 
 STRICT DATA RULES:
 1. DO NOT generate example tables, field descriptions, or placeholder data.
@@ -672,14 +827,15 @@ STRICT DATA RULES:
 3. DO NOT say "the following information is available for..." — only show actual data.
 4. DO NOT use markdown tables (| --- |) — only plain text or HTML <table> tags.
 5. If specific data is not available, acknowledge it and suggest alternatives.
+6. ALWAYS use the correct definitions: ISD creates sub-divisions, NISD does not, MERGE combines sub-divisions.
 
 When RAG context IS provided:
 - Answer questions about procedures, rules, and workflow from the context only.
 - Quote or summarise from the context — do not add information beyond it.
 
 When structured data IS provided:
-- Present it as-is in a clear, concise response.
-- Use an HTML table only if the data has multiple rows or columns."""
+- In DIRECT ANSWER MODE: answer the specific question only, in plain prose.
+- Otherwise: present it as-is in a clear, concise response."""
 
     # Build conversation history section
     history_section = ""
@@ -795,7 +951,8 @@ def parse_intent(message: str) -> str:
     ta_workload    = ["பணிச்சுமை", "workload", "worklod", "work load"]
     ta_application = ["விண்ணப்பம்", "விண்ணப்பங்கள்",
                       "application", "applications", "aplications", "aplication"]
-    ta_merge       = ["இணைப்பு", "இணைக்க",
+    ta_merge       = ["இணைப்பு", "இணைக்க", "இணைக்கப்பட்ட", "இணைப்பு விண்ணப்பம்",
+                      "இணைப்பு விண்ணப்பங்கள்", "இணைத்தல்",
                       "merge", "merging", "merged", "merg"]
     ta_status      = ["நிலை", "status", "statuss", "staus"]
     ta_area        = ["பரப்பளவு", "பரப்பு", "area", "arrea"]
@@ -805,75 +962,209 @@ def parse_intent(message: str) -> str:
     ta_detail      = ["விவரம்", "விவரங்கள்", "detail", "details", "info",
                       "contain", "included", "which", "what", "how", "land"]
 
-    # SD-specific workflow intents
+    # ── Document / file upload queries — catch before DB intent routing ──
+    # Phrases that mean "I uploaded a file, help me with it" should never
+    # be routed to survey/application DB queries.
+    _doc_phrases = [
+        "uploaded", "word document", "pdf document", "question bank",
+        "answer all", "answer for all", "from the document", "in the document",
+        "the file", "attached file", "from this file",
+    ]
+    if any(ph in msg for ph in _doc_phrases):
+        return "general_query"
     if "sd" in msg:
-        if any(w in msg for w in ["additional", "asking for", "requested", "information", "missing"]):
+        if any(w in msg for w in ["additional", "asking for", "requested", "information", "missing",
+                                   # Tamil: கூடுதல் தகவல், கோரப்பட்டது
+                                   "கூடுதல்", "கோரப்பட்டது", "தேவையான தகவல்"]):
             return "sd_additional_info"
-        if any(w in msg for w in ["encroachment", "flag", "receive", "noted"]):
+        if any(w in msg for w in ["encroachment", "flag", "receive", "noted",
+                                   # Tamil: ஆக்கிரமிப்பு
+                                   "ஆக்கிரமிப்பு"]):
             return "sd_encroachment_check"
-        if any(w in msg for w in ["complete", "sketch", "field data", "readiness"]):
+        if any(w in msg for w in ["complete", "sketch", "field data", "readiness",
+                                   # Tamil: வரைபடம், தயாரிப்பு
+                                   "வரைபடம்", "தயாரிப்பு", "முடிந்தது"]):
             return "sd_sketch_readiness"
-        if any(w in msg for w in ["forward", "forwarded", "sent to"]):
+        if any(w in msg for w in ["forward", "forwarded", "sent to",
+                                   # Tamil: அனுப்பப்பட்டது
+                                   "அனுப்பப்பட்டது", "அனுப்பியது", "பகிரப்பட்டது"]):
             return "sd_forward_check"
-        if any(w in msg for w in ["remark", "remarks", "comment", "recorded"]):
+        if any(w in msg for w in ["remark", "remarks", "comment", "recorded",
+                                   # Tamil: கருத்து, குறிப்பு
+                                   "கருத்து", "குறிப்பு", "பதிவு"]):
             return "sd_remarks"
 
+    # ── Escalation check BEFORE field-visit block ─────────────────────────────
+    # Must come first so "காலக்கெடு வரம்பு விண்ணப்பங்கள்" → escalation_check
+    # and NOT get consumed by the FV block's deadline inner check.
+    if any(w in msg for w in ["escalat", "threshold", "approaching deadline",
+                               "deadline this week", "approaching threshold",
+                               "due this week", "close to deadline", "near deadline",
+                               "எஸ்கலேஷன்", "காலக்கெடு நெருங்கு", "காலக்கெடு அணுகு",
+                               "காலக்கெடு வரம்பு", "மேல்முறையீடு வரம்பு",
+                               "நெருங்கும் காலக்கெடு"]):
+        return "escalation_check"
+
     # Field visit specific workflow intents (check before general field_visits)
-    if any(w in msg for w in ["field visit", "inspection", "schedule", "calendar", "visit date"]):
-        if any(w in msg for w in ["date did i select", "select for this", "what date", "which date"]):
+    if any(w in msg for w in ["field visit", "inspection", "schedule", "calendar", "visit date",
+                               "deadline", "15-working-day", "15 working day", "15-day", "working day",
+                               # Tamil field visit keywords
+                               "கள ஆய்வு", "களஆய்வு", "வருகை", "கள பார்வை",
+                               # Tamil scheduling keywords
+                               "திட்டமிட", "திட்டமிடப்பட", "திட்டமிடப்படாத",
+                               # Tamil deadline keywords (outer trigger so inner checks fire)
+                               "காலக்கெடு", "கடந்து விட்டதா", "கடந்துவிட்டதா",
+                               "நேர வரம்பு", "15 நாட்கள்",
+                               # Display/show keywords (Tamil + English)
+                               "display", "காட்டு", "காண்பி", "பட்டியல்"]):
+        if any(w in msg for w in ["date did i select", "select for this", "what date", "which date",
+                                   # Tamil: எந்த தேதி
+                                   "எந்த தேதி", "தேர்ந்தெடுத்த தேதி"]):
             return "fv_date_select"
-        if any(w in msg for w in ["nearby", "same ward", "close by", "location", "neighborhood"]):
+        if any(w in msg for w in ["nearby", "same ward", "close by", "location", "neighborhood",
+                                   # Tamil: அருகில், அதே வார்டு
+                                   "அருகில்", "அதே வார்டு", "பக்கத்தில்"]):
             return "fv_nearby_pending"
-        if any(w in msg for w in ["already have scheduled", "scheduled in this", "scheduled this week", "scheduled"]):
+        if any(w in msg for w in ["already have scheduled", "scheduled in this", "scheduled this week",
+                                   # Tamil: இந்த வாரம் திட்டமிடப்பட்டது
+                                   "இந்த வாரம் திட்டமிடப்பட்ட", "இந்த வாரம்"]) or \
+           ("scheduled" in msg and any(w in msg for w in ["this week", "this taluk", "in this",
+                                                            "இந்த வாரம்", "இந்த தாலுகா"])):
             if "conflict" not in msg and "reschedule" not in msg and "overdue" not in msg and "unassigned" not in msg:
                 return "fv_scheduled_this_week"
-        if any(w in msg for w in ["recently rescheduled", "last 7 days", "rescheduled during"]):
+        if any(w in msg for w in ["recently rescheduled", "last 7 days", "rescheduled during",
+                                   # Tamil: சமீபத்தில் மாற்றப்பட்டது
+                                   "சமீபத்தில் மாற்றப்பட்ட", "கடந்த 7 நாட்கள்"]):
             return "fv_recently_rescheduled"
-        if any(w in msg for w in ["reschedule", "availability", "rescheduling"]):
+        if any(w in msg for w in ["reschedule", "availability", "rescheduling",
+                                   # Tamil: மீண்டும் திட்டமிடு, கிடைப்பு நேரம்
+                                   "மீண்டும் திட்டமிடு", "மீண்டும் திட்டமிட", "கிடைக்கும் நேரம்",
+                                   # Tanglish: schedule பண்ண / செய்ய = reschedule intent
+                                   "schedule பண்ண", "schedule செய்ய", "புதிய தேதி"]):
             return "fv_reschedule_availability"
-        if any(w in msg for w in ["deadline", "15-working-day", "15 working day"]):
+        if any(w in msg for w in ["deadline", "15-working-day", "15 working day", "15-day",
+                                   "past the", "already past", "exceeded the deadline", "within the window",
+                                   "working day", "working-day", "day limit",
+                                   # Tamil: காலக்கெடு, 15 நாட்கள், கடந்து விட்டதா
+                                   "காலக்கெடு", "15 நாட்கள்", "கடந்து விட்டதா", "நேர வரம்பு",
+                                   "கடந்துவிட்டதா", "கடந்து விட்டது", "கடந்துவிட்டது"]):
             return "fv_deadline_check"
-        if any(w in msg for w in ["overdue field visits", "exceeded the scheduled", "overdue"]):
+        if any(w in msg for w in ["overdue field visits", "exceeded the scheduled", "overdue",
+                                   # Tamil: கடந்த கள ஆய்வுகள்
+                                   "காலதாமதமான கள ஆய்வு", "தாமதமான கள ஆய்வு", "தவறிய கள ஆய்வு"]):
             return "fv_overdue_inspections"
-        if any(w in msg for w in ["unassigned", "not yet been assigned"]):
+        if any(w in msg for w in ["unassigned", "not yet been assigned",
+                                   "awaiting scheduling", "awaiting schedule",
+                                   "no schedule", "without schedule",
+                                   # Tamil — திட்டமிடப்படாத (unscheduled/unassigned)
+                                   "திட்டமிடப்படாத", "திட்டமிடப்படவில்லை",
+                                   "நிலுவையில் உள்ள கள ஆய்வு",
+                                   "கால அட்டவணை இல்லாத"]):
             return "fv_unassigned_awaiting"
-        if any(w in msg for w in ["conflict", "conflicts", "overlap"]):
+        if any(w in msg for w in ["conflict", "conflicts", "overlap",
+                                   # Tamil: முரண்பாடு
+                                   "முரண்பாடு", "மோதல்", "ஒன்றிணைவு"]):
             return "fv_scheduling_conflicts"
+
+    # 1a. Standalone Tamil/English unassigned field visit check
+    # Catches pure-Tamil queries that may not have English field-visit trigger words
+    if any(w in msg for w in ["திட்டமிடப்படாத", "திட்டமிடப்படவில்லை", "கால அட்டவணை இல்லாத",
+                               "நிலுவையில் உள்ள கள ஆய்வு"]):
+        return "fv_unassigned_awaiting"
+
+    # 3. Escalation — check BEFORE field-visit block so "காலக்கெடு வரம்பு" routes here
+    if any(w in msg for w in ["escalat", "threshold", "approaching deadline",
+                               "deadline this week", "approaching threshold",
+                               "due this week", "close to deadline", "near deadline",
+                               # Tamil: எஸ்கலேஷன், காலக்கெடு நெருங்ுகிறது
+                               "எஸ்கலேஷன்", "காலக்கெடு நெருங்கு", "காலக்கெடு அணுகு",
+                               "காலக்கெடு வரம்பு", "மேல்முறையீடு வரம்பு",
+                               "நெருங்கும் காலக்கெடு"]):
+        return "escalation_check"
+
+    # 1a2. Standalone Tamil application list — catch before FV outer block consumes காட்டு/பட்டியல்
+    # "விண்ணப்பங்கள் பட்டியல் காட்டு" should be pending_applications not general_query
+    # Exclude merge queries: "இணைப்பு விண்ணப்பங்கள் காட்டு" should still go to merge_applications
+    # ALSO exclude specific field queries: "விண்ணப்பதாரர் பெயர் என்ன" should go to application_status
+    if any(w in msg for w in ["விண்ணப்பங்கள்", "விண்ணப்பங்களும்", "விண்ணப்பம்", "விண்ணப்பங்கள"]) and \
+       any(w in msg for w in ["காட்டு", "பட்டியல்", "காண்பி", "list", "show"]) and \
+       not any(w in msg for w in ["கள ஆய்வு", "களஆய்வு", "வருகை", "field", "visit",
+                                   "இணைப்பு", "இணைக்க", "merge"]) and \
+       not any(w in msg for w in ["பெயர்", "நாமாகும்", "நாமம்", "என்ன", "எது", "யார்", "எங்கே", "எப்போது",
+                                   "தொலைபேசி", "மின்னஞ்சல்", "முகவரி", "நிலை", "கட்டம்"]):
+        return "pending_applications"
 
     # 1. Application number pattern → application_status
     if re.search(r'\b(?:ISD|NISD|MERGE)/\w+/\d+/\d+\b|\bAPP-\d+-\d+\b', message, re.IGNORECASE):
+        return "application_status"
+
+    # 1b. "Where is this application" / "which department" → application_status
+    if any(p in msg for p in [
+        "where is this application", "where is the application",
+        "which department", "with sd", "with dis", "with tahsildar",
+        "current stage", "what stage", "which stage", "which office",
+        "application right now", "right now", "currently at", "currently with",
+        # Tamil: விண்ணப்பம் இப்போது எங்கே, எந்த கட்டத்தில்
+        "இந்த விண்ணப்பம் எங்கே", "எந்த நிலையில்",
+        "இப்போது எங்கே", "எந்த அலுவலகத்தில்", "எந்த கட்டத்தில்",
+        "எங்கே உள்ளது", "இப்போது யாரிடம்",
+    ]) and any(w in msg for w in ["application", "விண்ணப்பம்", "sd", "dis", "tahsildar",
+                                   "அலுவலகம்", "அலுவலகத்தில்", "கட்டம்", "உள்ளது"]):
+        return "application_status"
+    # Also catch: "application எந்த stage-ல் இருக்கு" style (Tanglish with stage keyword)
+    if any(w in msg for w in ["application", "விண்ணப்பம்"]) and \
+       any(w in msg for w in ["stage", "கட்டம்", "நிலை", "எங்கே", "அலுவலகம்", "அலுவலகத்தில்",
+                               "யாரிடம்", "எந்த"]) and \
+       not any(w in msg for w in ["pending", "overdue", "list", "show", "காட்டு", "பட்டியல்"]):
+        return "application_status"
+    # Pure Tamil location query without explicit "application" word
+    if any(w in msg for w in ["எந்த அலுவலகத்தில்", "எந்த கட்டத்தில்", "இப்போது யாரிடம்",
+                               "எங்கே உள்ளது"]):
         return "application_status"
 
     # 2. Overdue
     if has(ta_overdue):
         return "overdue_applications"
 
-    # 3. Escalation
-    if any(w in msg for w in ["escalat", "threshold", "approaching deadline", "deadline this week", "எஸ்கலேஷன்"]):
-        return "escalation_check"
+    # 3. (Escalation handled above before FV block)
 
     # 4. Litigation
-    if any(w in msg for w in ["litigation", "court", "legal", "flagged", "case flag", "வழக்கு", "நீதிமன்றம்"]):
+    if any(w in msg for w in ["litigation", "court", "legal", "flagged", "case flag",
+                               "வழக்கு", "நீதிமன்றம்", "சட்ட வழக்கு", "கோர்ட்"]):
         return "litigation_check"
 
     # 5. Sale deed
-    if any(w in msg for w in ["sale deed", "deed number", "registered deed", "sub-registrar", "sub registrar", "deed verified"]):
+    if any(w in msg for w in ["sale deed", "deed number", "registered deed",
+                               "sub-registrar", "sub registrar", "deed verified",
+                               # Tamil: விற்பனை பத்திரம்
+                               "விற்பனை பத்திரம்", "பத்திர எண்", "பதிவு செய்யப்பட்ட"]):
         return "sale_deed_check"
 
     # 6. Joint owners
-    if any(w in msg for w in ["joint owner", "joint owners", "co-owner", "co owner", "multiple owner", "shared ownership", "கூட்டு உரிமையாளர்"]):
+    if any(w in msg for w in ["joint owner", "joint owners", "co-owner", "co owner",
+                               "multiple owner", "shared ownership",
+                               "கூட்டு உரிமையாளர்", "இணை உரிமையாளர்", "பல உரிமையாளர்"]):
         return "joint_owner_check"
 
     # 7. Active applications by taluk
     if "active" in msg and "taluk" in msg:
         return "active_applications_taluks"
+    # Tamil: செயலில் உள்ள விண்ணப்பங்கள்
+    if any(w in msg for w in ["செயலில்", "சுறுசுறுப்பான"]) and "தாலுகா" in msg:
+        return "active_applications_taluks"
 
     # 8. Highest priority
     if "priority" in msg and ("week" in msg or "highest" in msg):
         return "highest_priority_applications"
+    # Tamil: முன்னுரிமை
+    if any(w in msg for w in ["முன்னுரிமை", "அவசர"]) and any(w in msg for w in ["உயர்ந்த", "அதிக", "இந்த வாரம்"]):
+        return "highest_priority_applications"
 
     # 9. Assigned today
     if "assigned" in msg and "today" in msg:
+        return "assigned_today"
+    # Tamil: இன்று ஒதுக்கப்பட்டது
+    if any(w in msg for w in ["இன்று", "இன்றைக்கு"]) and any(w in msg for w in ["ஒதுக்கப்பட்ட", "வழங்கப்பட்ட", "விண்ணப்பம்"]):
         return "assigned_today"
 
     # 10. Immediate action
@@ -884,69 +1175,115 @@ def parse_intent(message: str) -> str:
     ]:
         if kw1 in msg and (not kw2 or kw2 in msg):
             return "immediate_action"
+    # Tamil: உடனடி நடவடிக்கை, அவசர
+    if any(w in msg for w in ["உடனடி நடவடிக்கை", "உடனடியாக", "அவசர நடவடிக்கை", "கவனிக்க வேண்டிய"]):
+        return "immediate_action"
 
     # 11. Awaiting field visit
     if "awaiting" in msg and ("visit" in msg or "inspection" in msg):
         return "awaiting_field_visit"
+    # Tamil: கள ஆய்வு காத்திருக்கும்
+    if any(w in msg for w in ["கள ஆய்வு காத்திருக்கும்", "கள ஆய்வு நிலுவை", "ஆய்வு காத்திருப்பு"]):
+        return "awaiting_field_visit"
 
     # 12. Completion rate
-    if "completion rate" in msg:
+    if any(p in msg for p in [
+        "completion rate", "completion percentage", "completion percent",
+        "percent complete", "percentage complete", "overall completion",
+        "how many completed", "how many done", "how many finished",
+        "completed this month", "finished this month", "done this month",
+        "completed applications", "approved this month", "closed this month",
+        # Tamil: முடிக்கப்பட்ட விண்ணப்பங்கள், நிறைவு விகிதம்
+        "நிறைவு விகிதம்", "முடிக்கப்பட்ட விண்ணப்பங்கள்", "எத்தனை முடிந்தது",
+        "இந்த மாதம் முடிந்த", "முடிந்த விண்ணப்பங்கள்"
+    ]):
         return "completion_rate"
 
     # 13. Pending longest
     if "pending" in msg and "longest" in msg:
         return "pending_longest"
+    # Tamil: நீண்ட காலமாக நிலுவையில்
+    if any(w in msg for w in ["நீண்ட காலமாக", "மிக நீண்ட", "அதிக நாட்கள்"]) and has(ta_pending):
+        return "pending_longest"
 
     # 14. Workload by type
     if "workload" in msg and "type" in msg:
+        return "workload_by_type"
+    # Tamil: வகை வாரியான பணிச்சுமை
+    if any(w in msg for w in ["வகை வாரியான", "வகை அடிப்படையில்"]) and has(ta_workload):
         return "workload_by_type"
 
     # 15. Officer workload
     if has(ta_workload) or ("how many" in msg and "assigned" in msg):
         return "officer_workload"
+    # Tamil: எனது பணிச்சுமை, பணி சுமை விவரம்
+    if any(w in msg for w in ["எனது பணி", "என் பணிச்சுமை", "பணி விவரம்"]):
+        return "officer_workload"
 
-    # 16. NISD vs ISD
+    # 16. NISD vs ISD - catch ANY question about application type definitions
+    if any(w in msg for w in ["nisd", "isd", "merge"]) and \
+       any(w in msg for w in ["what", "என்ன", "difference", "வேறுபாடு", "mean", "stand for",
+                               "explain", "விளக்கம்", "define", "definition"]):
+        return "general_query"  # Force RAG retrieval for definition queries
     if "nisd" in msg and "isd" in msg:
         return "is_nisd_or_isd"
 
     # 17. Check documents
     if "document" in msg and any(w in msg for w in ["missing", "required", "all", "have"]):
         return "check_documents"
+    # Tamil: ஆவணங்கள் சரிபார்
+    if any(w in msg for w in ["ஆவணங்கள்", "ஆவணம்"]) and any(w in msg for w in ["சரிபார்", "தேவையான", "இல்லாத", "காணாத"]):
+        return "check_documents"
 
     # 18. Check sale deed (broader)
     if "deed" in msg or "sub-registrar" in msg:
+        return "check_sale_deed"
+    # Tamil: விற்பனை பத்திரம் (already in check 5 but catch broader deed queries)
+    if any(w in msg for w in ["பத்திரம்", "துணை பதிவாளர்"]):
         return "check_sale_deed"
 
     # 19. Town applications
     if "town" in msg and any(w in msg for w in ["pending", "applications", "show", "list"]):
         return "town_applications"
+    # Tamil: நகர விண்ணப்பங்கள்
+    if "நகரம்" in msg and any(w in msg for w in ["நிலுவை", "விண்ணப்பங்கள்", "காட்டு", "பட்டியல்"]):
+        return "town_applications"
 
     # 20. Block applications (not ward surveys)
-    if has(ta_block) and any(w in msg for w in ["pending", "applications", "show", "list"]):
-        is_ward_surveys = has(ta_survey) and any(w in msg for w in ["show", "list", "all"])
+    if has(ta_block) and any(w in msg for w in ["pending", "applications", "show", "list",
+                                                  "நிலுவை", "விண்ணப்பங்கள்", "காட்டு"]):
+        is_ward_surveys = has(ta_survey) and any(w in msg for w in ["show", "list", "all", "காட்டு"])
         if not is_ward_surveys:
             return "block_applications"
 
     # 21. Jurisdiction summary
     if any(w in msg for w in ["jurisdiction", "my area", "assigned area", "coverage",
-                               "my jurisdiction", "எனது பகுதி"]) and \
+                               "my jurisdiction",
+                               # Tamil: எனது பகுதி, ஒதுக்கப்பட்ட பகுதி
+                               "எனது பகுதி", "ஒதுக்கப்பட்ட பகுதி", "என் அதிகார வரம்பு"]) and \
        not has(ta_survey) and not has(ta_application):
         return "jurisdiction_summary"
 
     # ── ISD Processing queries (before survey_owners / pending_applications) ──
-    _sd_kws = ["sub-division", "subdivision", "sub division"]
-    if any(w in msg for w in _sd_kws) or "patta transfer" in msg:
-        if any(w in msg for w in ["patta transfer", "transfer order"]):
+    _sd_kws = ["sub-division", "subdivision", "sub division",
+               # Tamil: உட்பிரிவு
+               "உட்பிரிவு", "உட்பிரிவுகள்"]
+    if any(w in msg for w in _sd_kws) or "patta transfer" in msg or "பட்டா பரிமாற்றம்" in msg:
+        if any(w in msg for w in ["patta transfer", "transfer order",
+                                   "பட்டா பரிமாற்றம்", "பட்டா ஆணை"]):
             return "isd_processing"
-        if any(w in msg for w in ["latest action", "action taken", "each sub-division", "each subdivision"]):
+        if any(w in msg for w in ["latest action", "action taken", "each sub-division", "each subdivision",
+                                   "ஒவ்வொரு உட்பிரிவு", "கடைசி நடவடிக்கை"]):
             return "isd_processing"
-        if "proposed" in msg:
+        if "proposed" in msg or "முன்மொழியப்பட்ட" in msg:
             return "isd_processing"
-        if "assigned" in msg and any(w in msg for w in ["number", "numbers"]):
+        if "assigned" in msg and any(w in msg for w in ["number", "numbers",
+                                                          "எண்கள்", "ஒதுக்கப்பட்ட எண்"]):
             return "isd_processing"
         if "status" in msg and ("retrieve" in msg or "by sub" in msg):
             return "isd_processing"
-        if any(w in msg for w in ["compare", "original"]) and "area" in msg:
+        if any(w in msg for w in ["compare", "original",
+                                   "ஒப்பிடு", "அசல்", "ஒப்பீடு"]) and any(w in msg for w in ["area", "பரப்பளவு"]):
             return "isd_processing"
 
     # 22. Specific survey number + keyword ← after merge/isd checks
@@ -970,20 +1307,30 @@ def parse_intent(message: str) -> str:
         return "all_surveys_in_jurisdiction"
 
     # 26. Pending applications
+    # NOTE: merge-specific queries are handled in check 32 below.
+    # Guard here so "இணைப்பு விண்ணப்பங்கள் காட்டு" doesn't fall into pending_applications.
     is_workflow_query = any(w in msg for w in ["workflow", "step", "guide", "procedure",
                                                 "process", "work flow", "mean", "stand for",
                                                 "difference", "explain"])
-    if not is_workflow_query:
+    if not is_workflow_query and not has(ta_merge):
         is_type_query   = any(w in msg for w in ["isd", "nisd", "merge"])
         is_app_query    = has(ta_application)
         is_action_query = any(w in msg for w in ["how many", "howmuch", "show", "list",
                                                    "display", "view", "pending", "active",
-                                                   "assigned", "count", "are there", "there are"])
+                                                   "assigned", "count", "are there", "there are",
+                                                   "காட்டு", "காண்பி", "பட்டியல்",
+                                                   # Tamil: எத்தனை, காண்பி
+                                                   "எத்தனை", "உள்ளன"])
         if is_type_query and is_action_query:
             return "pending_applications"
         if is_app_query and (is_action_query or is_type_query):
             return "pending_applications"
-        if ("show" in msg or "list" in msg or "display" in msg) and "all" in msg and "application" in msg:
+        if ("show" in msg or "list" in msg or "display" in msg or "காட்டு" in msg or "பட்டியல்" in msg) and \
+           ("all" in msg or "அனைத்தும்" in msg) and \
+           ("application" in msg or "விண்ணப்பம்" in msg or "விண்ணப்பங்கள்" in msg):
+            return "pending_applications"
+        # Tamil: விண்ணப்பங்கள் பட்டியல் / காட்டு alone also triggers pending_applications
+        if has(ta_application) and has(ta_show):
             return "pending_applications"
         if has(ta_pending) and not has(ta_ward):
             return "pending_applications"
@@ -999,7 +1346,8 @@ def parse_intent(message: str) -> str:
         return "field_visits"
 
     # 29. Survey detail (keyword, no number)
-    if has(ta_survey) and any(w in msg for w in ["number", "no", "detail"]) \
+    if has(ta_survey) and any(w in msg for w in ["number", "no", "detail",
+                                                   "விவரம்", "விவரங்கள்", "தகவல்"]) \
        and not has(ta_show):
         return "survey_detail"
 
@@ -1013,7 +1361,7 @@ def parse_intent(message: str) -> str:
             return "survey_detail"
         return "subdivision_detail"
 
-    # 32. MERGE
+    # 32. MERGE — detail check BEFORE list check to avoid false matches
     if has(ta_merge) and (has(ta_survey + ta_subdivision + ta_detail) or has(ta_area)):
         return "merge_info"
     if has(ta_merge) and has(ta_show + ta_application):
@@ -1022,12 +1370,15 @@ def parse_intent(message: str) -> str:
         return "merge_info"
 
     # 33. Rejection
-    if fuzzy_match("reject") or "நிராகரிப்பு" in msg:
+    if fuzzy_match("reject") or any(w in msg for w in ["நிராகரிப்பு", "நிராகரிக்கப்பட்டது",
+                                                         "ஏன் நிராகரிக்கப்பட்டது", "நிராகரிப்பு காரணம்"]):
         return "rejection_info"
 
     # 34. Taluk summary
-    if "taluk" in msg and any(w in msg for w in ["summary", "all", "total", "how many"]) \
-       and not has(ta_application):
+    if any(w in msg for w in ["taluk", "தாலுகா", "தாலுக்கா"]) and \
+       any(w in msg for w in ["summary", "all", "total", "how many",
+                               "சுருக்கம்", "மொத்தம்", "அனைத்தும்", "எத்தனை"]) and \
+       not has(ta_application):
         return "taluk_summary"
 
     return "general_query"
