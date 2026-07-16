@@ -377,11 +377,9 @@ async def process_chat(
                 from datetime import date
                 today = date.today()
                 
-                query = select(FieldVisit).join(
-                    Application, FieldVisit.application_id == Application.id
-                ).where(
+                query = select(FieldVisit).where(
                     and_(
-                        Application.assigned_officer_id == officer.officer_id,
+                        FieldVisit.officer_id == officer.officer_id,
                         FieldVisit.scheduled_date < today,
                         FieldVisit.status.in_(["scheduled", "rescheduled", "overdue"])
                     )
@@ -397,17 +395,21 @@ async def process_chat(
                 for fv in overdue_visits:
                     app = await db.get(Application, fv.application_id)
                     survey = await db.get(SurveyNumber, app.survey_number_id) if app else None
+                    block = None
+                    if survey:
+                        block = await db.get(Block, survey.block_id)
                     
                     days_overdue = (today - fv.scheduled_date).days
                     
                     visit_data.append({
-                        "visit_id": fv.visit_id,
+                        "visit_id": str(fv.id),
                         "application_number": app.application_number if app else "N/A",
-                        "survey_number": survey.survey_number if survey else "N/A",
-                        "scheduled_date": fv.scheduled_date.strftime("%Y-%m-%d"),
+                        "survey_no": survey.survey_no if survey else "N/A",
+                        "block_number": block.block_number if block else None,
+                        "application_type": app.application_type if app else "N/A",
+                        "field_visit_date": fv.scheduled_date.strftime("%Y-%m-%d"),
                         "status": fv.status,
-                        "days_overdue": days_overdue,
-                        "purpose": fv.purpose or "Field Inspection"
+                        "days_overdue": days_overdue
                     })
                 
                 structured_data = {
@@ -2315,14 +2317,25 @@ async def process_chat(
                     logger.info(f"  Visit: scheduled={v.scheduled_date}, status='{v.status}'")
                 
                 # Now the actual overdue query
+                # Add jurisdiction filter to ensure only applications within officer's jurisdiction
+                from backend.services.postgres import get_jurisdiction_filter
+                jurisdiction_filter = await get_jurisdiction_filter(db, officer)
+                # jurisdiction_filter returns a list, we need to unpack it
+                jur_conditions = jurisdiction_filter if isinstance(jurisdiction_filter, list) else [jurisdiction_filter]
+                
                 overdue_visits_stmt = select(FieldVisit).options(
-                    joinedload(FieldVisit.application).joinedload(Application.survey_number)
+                    joinedload(FieldVisit.application).joinedload(Application.survey_number).joinedload(SurveyNumber.block)
+                ).join(
+                    Application, FieldVisit.application_id == Application.id
+                ).join(
+                    SurveyNumber, Application.survey_number_id == SurveyNumber.id
                 ).where(
                     and_(
                         FieldVisit.officer_id == officer.officer_id,
                         FieldVisit.scheduled_date.isnot(None),
                         FieldVisit.scheduled_date < today,
-                        FieldVisit.status.in_(['scheduled', 'rescheduled', 'overdue'])
+                        FieldVisit.status.in_(['scheduled', 'rescheduled', 'overdue']),
+                        *jur_conditions  # Unpack list of conditions
                     )
                 ).order_by(FieldVisit.scheduled_date.asc())
                 
@@ -2333,16 +2346,18 @@ async def process_chat(
                 for visit in overdue_visits:
                     app = visit.application
                     if app:
-                        logger.info(f"Overdue visit: App={app.application_number}, Scheduled={visit.scheduled_date}, Status={visit.status}")
+                        app_type = app.application_type if app.application_type else "N/A"
+                        logger.info(f"Overdue visit: App={app.application_number}, Type={app_type}, Scheduled={visit.scheduled_date}, Status={visit.status}")
                         overdue_list.append({
                             "application_number": app.application_number,
-                            "type": app.application_type,
+                            "type": app_type,  # Use variable with fallback
                             "status": visit.status,  # Field visit status, not application status
-                            "stage": app.current_stage,
+                            "stage": app.current_stage if app.current_stage else "N/A",
                             "survey_no": app.survey_number.survey_no if app.survey_number else "N/A",
-                            "scheduled_date": visit.scheduled_date.isoformat() if visit.scheduled_date else "N/A",
+                            "scheduled_date": visit.scheduled_date.isoformat() if visit.scheduled_date else "Not Scheduled",
                             "submission_date": app.submission_date.isoformat() if app.submission_date else "N/A"
                         })
+                        logger.info(f"  Complete data: {overdue_list[-1]}")
                 
                 structured_data = {
                     "overdue_visits_count": len(overdue_list),
@@ -2871,6 +2886,71 @@ async def process_chat_stream(
                 "overdue_count": sum(1 for x in approaching_s if x["is_overdue"]),
                 "query_type": "Escalation Threshold — Applications Approaching Deadline"
             }
+
+        elif intent == "fv_overdue_inspections":
+            # Get field visits that are overdue (scheduled date in past, not completed)
+            try:
+                from backend.models import FieldVisit, Application, SurveyNumber, Block
+                from sqlalchemy.orm import joinedload
+                from datetime import date
+                from backend.services.postgres import get_jurisdiction_filter
+                
+                today = date.today()
+                logger.info(f"=== OVERDUE FIELD VISITS QUERY (STREAM) ===")
+                logger.info(f"Today: {today}")
+                logger.info(f"Officer ID: {officer.officer_id}")
+                
+                # Add jurisdiction filter to ensure only applications within officer's jurisdiction
+                jurisdiction_filter = await get_jurisdiction_filter(db, officer)
+                # jurisdiction_filter returns a list, we need to unpack it
+                jur_conditions = jurisdiction_filter if isinstance(jurisdiction_filter, list) else [jurisdiction_filter]
+                
+                overdue_visits_stmt = select(FieldVisit).options(
+                    joinedload(FieldVisit.application).joinedload(Application.survey_number).joinedload(SurveyNumber.block)
+                ).join(
+                    Application, FieldVisit.application_id == Application.id
+                ).join(
+                    SurveyNumber, Application.survey_number_id == SurveyNumber.id
+                ).where(
+                    and_(
+                        FieldVisit.officer_id == officer.officer_id,
+                        FieldVisit.scheduled_date.isnot(None),
+                        FieldVisit.scheduled_date < today,
+                        FieldVisit.status.in_(['scheduled', 'rescheduled', 'overdue']),
+                        *jur_conditions  # Unpack list of conditions
+                    )
+                ).order_by(FieldVisit.scheduled_date.asc())
+                
+                overdue_visits = (await db.execute(overdue_visits_stmt)).unique().scalars().all()
+                logger.info(f"Overdue visits found: {len(overdue_visits)}")
+                
+                overdue_list = []
+                for visit in overdue_visits:
+                    app = visit.application
+                    if app:
+                        app_type = app.application_type if app.application_type else "N/A"
+                        logger.info(f"Overdue visit: App={app.application_number}, Type={app_type}, Scheduled={visit.scheduled_date}, Status={visit.status}")
+                        overdue_list.append({
+                            "application_number": app.application_number,
+                            "type": app_type,  # Use variable with fallback
+                            "status": visit.status,  # Field visit status, not application status
+                            "stage": app.current_stage if app.current_stage else "N/A",
+                            "survey_no": app.survey_number.survey_no if app.survey_number else "N/A",
+                            "block_number": app.survey_number.block.block_number if app.survey_number and app.survey_number.block else "N/A",
+                            "scheduled_date": visit.scheduled_date.isoformat() if visit.scheduled_date else "Not Scheduled",
+                            "submission_date": app.submission_date.isoformat() if app.submission_date else "N/A"
+                        })
+                        # Log the complete dictionary for debugging
+                        logger.info(f"  Complete data: {overdue_list[-1]}")
+                
+                structured_data = {
+                    "overdue_visits_count": len(overdue_list),
+                    "field_visits": overdue_list,
+                    "query_type": "Overdue Field Visits"
+                }
+            except Exception as e:
+                logger.error(f"Error getting overdue field visits (stream): {e}", exc_info=True)
+                structured_data = {"error": str(e), "field_visits": []}
 
         elif intent == "awaiting_field_visit":
             from backend.models import FieldVisit
@@ -3915,6 +3995,16 @@ async def process_chat_stream(
                         f"No — {app_no_dl} is on working day {working_days} of 15 "
                         f"(submitted {sub_date_str}). {remaining} working day(s) remaining within the window."
                     )
+            full_response_text = chunk
+            sse_data = f"data: {json.dumps({'content': chunk})}\n\n"
+            yield sse_data.encode('utf-8')
+
+        elif intent == "fv_overdue_inspections":
+            count = structured_data.get("overdue_visits_count", 0) if structured_data else 0
+            if count == 0:
+                chunk = "No field visits are currently overdue. All field visits are on schedule."
+            else:
+                chunk = f"Found {count} overdue field visit(s). See the table below for details."
             full_response_text = chunk
             sse_data = f"data: {json.dumps({'content': chunk})}\n\n"
             yield sse_data.encode('utf-8')

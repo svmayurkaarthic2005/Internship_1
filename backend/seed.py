@@ -242,8 +242,18 @@ async def seed_database():
             designation="Sub Inspector Surveyor",
             is_active=True
         )
+        officer_4 = SISOfficer(
+            employee_id="SIS-004",
+            name="Lakshmi Narayanan",
+            name_tamil="?????? ?????????",
+            email="lakshmi.narayanan@sis.tn.gov.in",
+            password_hash=get_password_hash("Test@1234"),
+            mobile="9988776655",
+            designation="District Sub Inspector Surveyor",
+            is_active=True
+        )
         
-        db.add_all([officer_1, officer_2, officer_3])
+        db.add_all([officer_1, officer_2, officer_3, officer_4])
         await db.flush()
         
         # Officer jurisdictions
@@ -261,8 +271,12 @@ async def seed_database():
             officer_id=officer_3.id, jurisdiction_type="taluk",
             district_id=chennai.id, taluk_id=tambaram.id
         )
+        juris_4 = OfficerJurisdiction(
+            officer_id=officer_4.id, jurisdiction_type="district",
+            district_id=chennai.id
+        )
         
-        db.add_all([juris_1, juris_2, juris_3])
+        db.add_all([juris_1, juris_2, juris_3, juris_4])
         await db.flush()
         
         print("[OK] SIS officers seeded")
@@ -372,13 +386,13 @@ async def seed_database():
         db.add(app_4)
         await db.flush()
         
-        # Application 5: ISD, unscheduled field visit (8 days ago)
+        # Application 5: ISD, unscheduled field visit (8 days ago) - NOT assigned to officer_1 (Block B2 is outside jurisdiction)
         app_5 = Application(
             application_number="APP-2024-000005",
             application_type="ISD",
             applicant_id=applicants[4].id,
             survey_number_id=survey_200.id,
-            assigned_officer_id=officer_1.id,
+            assigned_officer_id=officer_2.id,  # Assign to officer_2 instead
             submission_channel="citizen",
             submission_date=today - timedelta(days=8),
             declared_reason="sale",
@@ -392,13 +406,13 @@ async def seed_database():
         db.add(app_5)
         await db.flush()
         
-        # Application 6: NISD, rejected by SD (18 days ago)
+        # Application 6: NISD, rejected by SD (18 days ago) - NOT assigned to officer_1 (Block B2 is outside jurisdiction)
         app_6 = Application(
             application_number="APP-2024-000006",
             application_type="NISD",
             applicant_id=applicants[5].id,
             survey_number_id=survey_201.id,
-            assigned_officer_id=officer_1.id,
+            assigned_officer_id=officer_2.id,  # Assign to officer_2 instead
             submission_channel="CSC",
             submission_date=today - timedelta(days=18),
             declared_reason="gift_deed",
@@ -626,7 +640,7 @@ async def seed_database():
         
         fv_3 = FieldVisit(
             application_id=app_5.id,
-            officer_id=officer_1.id,
+            officer_id=officer_2.id,  # Corrected: app_5 is now assigned to officer_2 (Block B2)
             status="unscheduled"
         )
         

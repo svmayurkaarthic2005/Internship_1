@@ -103,12 +103,12 @@ function togglePasswordVisibility() {
     
     if (passwordField.type === 'password') {
         passwordField.type = 'text';
-        // Change icon to eye-off
-        toggleIcon.setAttribute('data-lucide', 'eye-off');
+        // Change icon to eye (password is now visible)
+        toggleIcon.setAttribute('data-lucide', 'eye');
     } else {
         passwordField.type = 'password';
-        // Change icon to eye
-        toggleIcon.setAttribute('data-lucide', 'eye');
+        // Change icon to eye-off (password is now hidden)
+        toggleIcon.setAttribute('data-lucide', 'eye-off');
     }
     
     // Reinitialize lucide icons

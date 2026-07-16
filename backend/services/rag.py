@@ -704,6 +704,37 @@ def build_html_response(structured_data: Dict[str, Any], language: str = "en") -
             f"</table>"
         )
 
+    # ── Field Visits (overdue, scheduled, all) ───────────────────────
+    if "field_visits" in structured_data and isinstance(structured_data["field_visits"], list):
+        field_visits = structured_data["field_visits"]
+        query_type = structured_data.get("query_type", "Field Visits")
+        
+        if not field_visits:
+            return f"<div>No field visits found.</div>"
+        
+        rows = "".join(
+            f"<tr>"
+            f"<td>{_e(fv.get('application_number'))}</td>"
+            f"<td>{_e(fv.get('survey_no'))}</td>"
+            f"<td>{_e(fv.get('block_number'))}</td>"
+            f"<td>{_e(fv.get('type'))}</td>"  # Changed from 'application_type' to 'type'
+            f"<td>{_status(fv.get('status'), lang)}</td>"
+            f"<td>{_e(fv.get('scheduled_date') or 'Not Scheduled')}</td>"  # Changed from 'field_visit_date'
+            f"</tr>"
+            for fv in field_visits
+        )
+        
+        return (
+            f"<div class='table-intro'><strong>{query_type}</strong>: Found <strong>{len(field_visits)}</strong> field visit(s)</div>"
+            f"<table class='data-table'>"
+            f"<thead><tr>"
+            f"<th>Application Number</th><th>Survey Number</th><th>Block</th>"
+            f"<th>Type</th><th>Status</th><th>Scheduled Date</th>"
+            f"</tr></thead>"
+            f"<tbody>{rows}</tbody>"
+            f"</table>"
+        )
+
     # No matching handler — caller falls back to LLM
     return ""
 
@@ -1071,16 +1102,17 @@ def parse_intent(message: str) -> str:
         
         # --- ADDED: Specific overdue field visit patterns (check FIRST) ---
         if any(ph in msg for ph in [
-            "overdue field", "field visit overdue", "overdue visit",
+            "overdue field", "field visit overdue", "field visits overdue",
+            "overdue visit", "overdue visits",
             "overdue inspection", "past due visit", "missed visit",
-            "show overdue field", "show overdue visit",
+            "show overdue field", "show overdue visit", "show overdue visits",
             "கால தாமதமான கள", "தாமதமான கள ஆய்வு"
         ]):
             return "fv_overdue_inspections"
         
         # --- CHANGED: Check for overdue FIELD VISITS before generic overdue ---
         _is_overdue = any(w in msg for w in ["overdue", "late", "delayed", "காலதாமதமான"])
-        _is_field_visit = any(w in msg for w in ["field visit", "visit", "inspection", 
+        _is_field_visit = any(w in msg for w in ["field visit", "field visits", "visit", "visits", "inspection", 
                                                    "கள ஆய்வு", "கள்ஆய்வு", "ஆய்வு"])
         
         if _is_overdue and _is_field_visit:

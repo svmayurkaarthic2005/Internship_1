@@ -795,10 +795,23 @@ async def get_field_visits(
     """
     try:
         from sqlalchemy.orm import joinedload
+        
+        # Get officer's jurisdiction filter (block/ward/taluk)
+        jurisdiction_filter = await get_jurisdiction_filter(db, officer)
+        # jurisdiction_filter returns a list, we need to unpack it
+        jur_conditions = jurisdiction_filter if isinstance(jurisdiction_filter, list) else [jurisdiction_filter]
+        
         query = select(FieldVisit).options(
             joinedload(FieldVisit.application).joinedload(Application.survey_number).joinedload(SurveyNumber.block)
+        ).join(
+            Application, FieldVisit.application_id == Application.id
+        ).join(
+            SurveyNumber, Application.survey_number_id == SurveyNumber.id
         ).where(
-            FieldVisit.officer_id == officer.officer_id
+            and_(
+                FieldVisit.officer_id == officer.officer_id,
+                *jur_conditions  # Unpack list of conditions
+            )
         )
         
         if status_filter:
