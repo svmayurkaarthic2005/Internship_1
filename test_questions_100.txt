@@ -1,0 +1,388 @@
+=================================================================
+SIS CHATBOT - 100 TEST QUESTIONS (தமிழ் & ENGLISH)
+=================================================================
+
+=================================================================
+SECTION 1: GREETINGS & BASIC QUERIES (10 Questions)
+=================================================================
+
+1. Hello
+   வணக்கம்
+
+2. Good morning
+   காலை வணக்கம்
+
+3. Hi, how are you?
+   ஹாய், எப்படி இருக்கீங்க?
+
+4. What can you help me with?
+   நீங்க என்ன உதவி செய்ய முடியும்?
+
+5. Tell me about yourself
+   உன்னைப் பத்தி சொல்லு
+
+6. What is your purpose?
+   உங்கள் நோக்கம் என்ன?
+
+7. How do you work?
+   நீ எப்படி வேலை செய்கிறாய்?
+
+8. Can you speak Tamil?
+   தமிழ் பேச தெரியுமா?
+
+9. Thank you
+   நன்றி
+
+10. Bye
+    போய் வாரேன்
+
+=================================================================
+SECTION 2: APPLICATION STATUS & DETAILS (15 Questions)
+=================================================================
+
+11. Show me application APP-2024-000001
+    விண்ணப்பம் APP-2024-000001 காட்டு
+
+12. What is the status of APP-2024-000001?
+    APP-2024-000001 நிலை என்ன?
+
+13. Which stage is application APP-2024-000002 at?
+    விண்ணப்பம் APP-2024-000002 எந்த கட்டத்தில் உள்ளது?
+
+14. Where is application APP-2024-000001 right now?
+    விண்ணப்பம் APP-2024-000001 இப்போது எங்கே உள்ளது?
+
+15. What is the applicant name for APP-2024-000001?
+    APP-2024-000001 விண்ணப்பதாரர் பெயர் என்ன?
+
+16. Give me the mobile number of APP-2024-000001 applicant
+    APP-2024-000001 விண்ணப்பதாரரின் தொலைபேசி எண் கொடு
+
+17. What is the applicant address for APP-2024-000002?
+    APP-2024-000002 விண்ணப்பதாரரின் முகவரி என்ன?
+
+18. Show me the email of the applicant in APP-2024-000001
+    APP-2024-000001 விண்ணப்பதாரரின் மின்னஞ்சல் காட்டு
+
+19. What type is APP-2024-000001? ISD or NISD?
+    APP-2024-000001 என்ன வகை? ISD அல்லது NISD?
+
+20. When was APP-2024-000001 submitted?
+    APP-2024-000001 எப்போது சமர்ப்பிக்கப்பட்டது?
+
+21. What year was APP-2024-000002 submitted?
+    APP-2024-000002 எந்த ஆண்டு சமர்ப்பிக்கப்பட்டது?
+
+22. Which survey number is APP-2024-000001 for?
+    APP-2024-000001 எந்த கணக்கெண்ணுக்கானது?
+
+23. Is APP-2024-000003 overdue?
+    APP-2024-000003 காலதாமதமா?
+
+24. Show workflow history for APP-2024-000001
+    APP-2024-000001 வேலை வரலாறு காட்டு
+
+25. What is the priority of APP-2024-000004?
+    APP-2024-000004 முன்னுரிமை என்ன?
+
+=================================================================
+SECTION 3: PENDING & ACTIVE APPLICATIONS (12 Questions)
+=================================================================
+
+26. Show all my pending applications
+    எனது நிலுவையில் உள்ள விண்ணப்பங்களை காட்டு
+
+27. List pending applications
+    நிலுவை விண்ணப்பங்கள் பட்டியல்
+
+28. How many pending ISD applications do I have?
+    எனக்கு எத்தனை நிலுவை ISD விண்ணப்பங்கள் உள்ளன?
+
+29. Show me all NISD applications
+    அனைத்து NISD விண்ணப்பங்களையும் காட்டு
+
+30. List all merge applications
+    அனைத்து இணைப்பு விண்ணப்பங்களை பட்டியலிடு
+
+31. Show pending MERGE applications
+    நிலுவையில் உள்ள இணைப்பு விண்ணப்பங்களை காட்டு
+
+32. How many applications are assigned to me?
+    எனக்கு எத்தனை விண்ணப்பங்கள் ஒதுக்கப்பட்டுள்ளன?
+
+33. Display all my applications
+    என் அனைத்து விண்ணப்பங்களையும் காட்டு
+
+34. Show me approved applications
+    அங்கீகரிக்கப்பட்ட விண்ணப்பங்களை காட்டு
+
+35. List rejected applications
+    நிராகரிக்கப்பட்ட விண்ணப்பங்களை பட்டியலிடு
+
+36. Show applications in progress
+    செயலில் உள்ள விண்ணப்பங்களை காட்டு
+
+37. Give me the count of pending applications
+    நிலுவை விண்ணப்பங்களின் எண்ணிக்கையை கொடு
+
+=================================================================
+SECTION 4: OVERDUE & PRIORITY (8 Questions)
+=================================================================
+
+38. Show overdue applications
+    காலதாமதமான விண்ணப்பங்களை காட்டு
+
+39. List all overdue ISD applications
+    காலதாமதமான அனைத்து ISD விண்ணப்பங்களை பட்டியலிடு
+
+40. Which applications need immediate action?
+    எந்த விண்ணப்பங்களுக்கு உடனடி நடவடிக்கை தேவை?
+
+41. Show high priority applications
+    அதிக முன்னுரிமை விண்ணப்பங்களை காட்டு
+
+42. Which applications are approaching deadline?
+    எந்த விண்ணப்பங்கள் காலக்கெடு நெருங்குகின்றன?
+
+43. Show applications that are overdue for more than 20 days
+    20 நாட்களுக்கு மேல் தாமதமான விண்ணப்பங்களை காட்டு
+
+44. List applications pending longest
+    மிக நீண்ட காலமாக நிலுவையில் உள்ள விண்ணப்பங்கள்
+
+45. Show escalation threshold applications
+    காலக்கெடு வரம்பு விண்ணப்பங்களை காட்டு
+
+=================================================================
+SECTION 5: FIELD VISITS (12 Questions)
+=================================================================
+
+46. Show my field visits
+    என் கள ஆய்வுகளை காட்டு
+
+47. List scheduled field visits
+    திட்டமிடப்பட்ட கள ஆய்வுகளை பட்டியலிடு
+
+48. Show unscheduled field visits
+    திட்டமிடப்படாத கள ஆய்வுகளை காட்டு
+
+49. How many field visits are scheduled this week?
+    இந்த வாரம் எத்தனை கள ஆய்வுகள் திட்டமிடப்பட்டுள்ளன?
+
+50. Show field visits awaiting scheduling
+    கால அட்டவணை இல்லாத கள ஆய்வுகளை காட்டு
+
+51. Which field visits are overdue?
+    எந்த கள ஆய்வுகள் காலதாமதமாகின?
+
+52. Has APP-2024-000001 passed the 15-day deadline?
+    APP-2024-000001 15 நாள் காலக்கெடுவை கடந்துவிட்டதா?
+
+53. What date did I select for field visit of APP-2024-000001?
+    APP-2024-000001 கள ஆய்வுக்கு நான் எந்த தேதியை தேர்ந்தெடுத்தேன்?
+
+54. Show nearby pending applications in the same ward
+    அதே வார்டில் அருகில் உள்ள நிலுவை விண்ணப்பங்களை காட்டு
+
+55. When can I reschedule this field visit?
+    இந்த கள ஆய்வை எப்போது மீண்டும் திட்டமிட முடியும்?
+
+56. Are there any scheduling conflicts?
+    ஏதேனும் கால அட்டவணை முரண்பாடுகள் உள்ளனவா?
+
+57. Show recently rescheduled field visits
+    சமீபத்தில் மாற்றப்பட்ட கள ஆய்வுகளை காட்டு
+
+=================================================================
+SECTION 6: WORKLOAD & STATISTICS (8 Questions)
+=================================================================
+
+58. Show my workload
+    என் பணிச்சுமையை காட்டு
+
+59. What is my workload summary?
+    என் பணிச்சுமை சுருக்கம் என்ன?
+
+60. How many applications are assigned today?
+    இன்று எத்தனை விண்ணப்பங்கள் ஒதுக்கப்பட்டுள்ளன?
+
+61. Show workload by application type
+    விண்ணப்ப வகை வாரியான பணிச்சுமையை காட்டு
+
+62. What is my completion rate?
+    எனது முடிப்பு விகிதம் என்ன?
+
+63. What is my completion rate this month?
+    இந்த மாதம் எனது முடிப்பு விகிதம் என்ன?
+
+64. How many applications completed this month?
+    இந்த மாதம் எத்தனை விண்ணப்பங்கள் முடிந்தன?
+
+65. Show active applications by taluk
+    தாலுகா வாரியாக செயலில் உள்ள விண்ணப்பங்களை காட்டு
+
+=================================================================
+SECTION 7: SURVEY NUMBERS & SUBDIVISIONS (10 Questions)
+=================================================================
+
+66. Show details of survey number 145
+    கணக்கெண் 145 விவரங்களை காட்டு
+
+67. Tell me about survey 145/1A
+    கணக்கெண் 145/1A பற்றி சொல்லு
+
+68. Who are the owners of survey 145?
+    கணக்கெண் 145 உரிமையாளர்கள் யார்?
+
+69. Show ownership details for survey 145/2
+    கணக்கெண் 145/2 உரிமை விவரங்களை காட்டு
+
+70. Are there joint owners for survey 145?
+    கணக்கெண் 145-க்கு கூட்டு உரிமையாளர்கள் உள்ளனரா?
+
+71. Is APP-2024-000001 applicant the sole owner?
+    APP-2024-000001 விண்ணப்பதாரர் ஒரே உரிமையாளரா?
+
+72. What is the next available subdivision number for survey 145?
+    கணக்கெண் 145-க்கு அடுத்த கிடைக்கும் உட்பிரிவு எண் என்ன?
+
+73. Show all surveys in my jurisdiction
+    எனது அதிகார வரம்பில் உள்ள அனைத்து கணக்கெண்களையும் காட்டு
+
+74. List surveys in ward 5
+    வார்டு 5-ல் உள்ள கணக்கெண்களை பட்டியலிடு
+
+75. Show surveys in block B1
+    தொகுதி B1-ல் உள்ள கணக்கெண்களை காட்டு
+
+=================================================================
+SECTION 8: MERGE APPLICATIONS (8 Questions)
+=================================================================
+
+76. Show merge application details for APP-2024-000004
+    APP-2024-000004 இணைப்பு விண்ணப்ப விவரங்களை காட்டு
+
+77. Which subdivisions are included in APP-2024-000004?
+    APP-2024-000004-ல் எந்த உட்பிரிவுகள் சேர்க்கப்பட்டுள்ளன?
+
+78. What is the total merge area for APP-2024-000004?
+    APP-2024-000004-ன் மொத்த இணைப்பு பரப்பளவு என்ன?
+
+79. Show all merge applications
+    அனைத்து இணைப்பு விண்ணப்பங்களையும் காட்டு
+
+80. List subdivisions being merged in APP-2024-000004
+    APP-2024-000004-ல் இணைக்கப்படும் உட்பிரிவுகளை பட்டியலிடு
+
+81. Which survey number is this merge application for?
+    இந்த இணைப்பு விண்ணப்பம் எந்த கணக்கெண்ணுக்கானது?
+
+82. How many subdivisions are being merged?
+    எத்தனை உட்பிரிவுகள் இணைக்கப்படுகின்றன?
+
+83. Show merge application status
+    இணைப்பு விண்ணப்ப நிலையை காட்டு
+
+=================================================================
+SECTION 9: ISD PROCESSING (7 Questions)
+=================================================================
+
+84. What are the proposed subdivisions for APP-2024-000001?
+    APP-2024-000001-க்கு முன்மொழியப்பட்ட உட்பிரிவுகள் என்ன?
+
+85. How many proposed subdivisions in APP-2024-000001?
+    APP-2024-000001-ல் எத்தனை முன்மொழியப்பட்ட உட்பிரிவுகள்?
+
+86. Compare original area with proposed area for APP-2024-000001
+    APP-2024-000001-க்கு அசல் பரப்பளவையும் முன்மொழியப்பட்ட பரப்பளவையும் ஒப்பிடு
+
+87. Show subdivision status for APP-2024-000001
+    APP-2024-000001 உட்பிரிவு நிலையை காட்டு
+
+88. How many patta transfer orders for APP-2024-000001?
+    APP-2024-000001-க்கு எத்தனை பட்டா பரிமாற்ற ஆணைகள்?
+
+89. What are the assigned subdivision numbers?
+    ஒதுக்கப்பட்ட உட்பிரிவு எண்கள் என்ன?
+
+90. Show latest action for each subdivision
+    ஒவ்வொரு உட்பிரிவுக்கும் கடைசி நடவடிக்கையை காட்டு
+
+=================================================================
+SECTION 10: DOCUMENTS & VERIFICATION (10 Questions)
+=================================================================
+
+91. Are all documents submitted for APP-2024-000001?
+    APP-2024-000001-க்கு அனைத்து ஆவணங்களும் சமர்ப்பிக்கப்பட்டனவா?
+
+92. Which documents are missing for APP-2024-000002?
+    APP-2024-000002-க்கு எந்த ஆவணங்கள் காணவில்லை?
+
+93. Is the sale deed verified for APP-2024-000001?
+    APP-2024-000001-க்கு விற்பனை பத்திரம் சரிபார்க்கப்பட்டதா?
+
+94. Check sale deed for APP-2024-000001
+    APP-2024-000001 விற்பனை பத்திரத்தை சரிபார்
+
+95. Is there any litigation on survey 145?
+    கணக்கெண் 145-ல் ஏதேனும் வழக்கு உள்ளதா?
+
+96. Check for encroachment flag on APP-2024-000001
+    APP-2024-000001-ல் ஆக்கிரமிப்பு கொடி உள்ளதா சரிபார்
+
+97. What did SD request for additional info on APP-2024-000001?
+    APP-2024-000001-க்கு கூடுதல் தகவலுக்காக SD என்ன கோரியது?
+
+98. Show SD remarks for APP-2024-000001
+    APP-2024-000001-க்கான SD குறிப்புகளை காட்டு
+
+99. Has APP-2024-000001 been forwarded to SD?
+    APP-2024-000001 SD-க்கு அனுப்பப்பட்டதா?
+
+100. Show rejection history for APP-2024-000006
+     APP-2024-000006 நிராகரிப்பு வரலாறு காட்டு
+
+=================================================================
+APPLICATION TYPE DEFINITIONS (Reference)
+=================================================================
+
+ISD (Involving Sub-Division):
+- Creates NEW subdivisions when dividing land
+- Example: Survey 145 → 145/1 + 145/2
+- Requires field visit
+
+NISD (Not Involving Sub-Division):
+- Only transfers ownership, NO subdivisions
+- Survey number remains unchanged
+- Only patta holder name changes
+
+MERGE:
+- Combines multiple subdivisions into ONE
+- Example: 145/1 + 145/2 → Survey 145
+- Reduces number of parcels
+
+=================================================================
+END OF TEST QUESTIONS
+=================================================================
+
+TESTING INSTRUCTIONS:
+1. Test questions in sequence or randomly
+2. Verify responses match expected data
+3. Check Tamil/English language detection
+4. Verify table rendering for list queries
+5. Test field-specific queries (name, mobile, date, etc.)
+6. Verify jurisdiction access controls
+7. Check error handling for invalid app numbers
+8. Test conversation continuity (follow-up questions)
+
+Expected Features to Test:
+✓ Language detection (English/Tamil/Tanglish)
+✓ Intent recognition
+✓ Field-specific extraction
+✓ HTML table generation
+✓ Direct answers for interrogative queries
+✓ Conversation context tracking
+✓ Date/year extraction
+✓ Pending count accuracy
+✓ Merge application handling
+✓ Field visit deadline checks

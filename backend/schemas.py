@@ -33,11 +33,36 @@ class OfficerContext(BaseModel):
     employee_id: str
     name: str
     email: str
+    designation: Optional[str] = None  # SIS Officer, DIS Officer, SD Officer, Tahsildar
     jurisdiction_type: str
     jurisdiction_name: str
     jurisdiction_ids: List[UUID]
     
     model_config = ConfigDict(from_attributes=True)
+    
+    @property
+    def officer_stage(self) -> str:
+        """
+        Determine the workflow stage this officer handles based on designation.
+        SIS Officer -> SIS stage
+        DIS Officer -> DIS stage  
+        SD Officer -> SD stage
+        Tahsildar -> Tahsildar stage
+        """
+        if not self.designation:
+            return "SIS"  # Default to SIS
+        
+        designation_lower = self.designation.lower()
+        if "sis" in designation_lower or "sub inspector" in designation_lower:
+            return "SIS"
+        elif "dis" in designation_lower or "deputy inspector" in designation_lower:
+            return "DIS"
+        elif "sd" in designation_lower or "sub divisional" in designation_lower or "subdivisional" in designation_lower:
+            return "SD"
+        elif "tahsildar" in designation_lower:
+            return "Tahsildar"
+        else:
+            return "SIS"  # Default
 
 
 class StandardResponse(BaseModel):

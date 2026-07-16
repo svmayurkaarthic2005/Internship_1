@@ -31,8 +31,8 @@
     --spacing-3xl: 48px;
     --spacing-4xl: 60px;
     
-    /* Typography */
-    --font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    /* Typography - System fonts first for offline support */
+    --font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Helvetica Neue', Arial, sans-serif, 'Inter';
     --font-size-xs: 11px;
     --font-size-sm: 12px;
     --font-size-base: 14px;

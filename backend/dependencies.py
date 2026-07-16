@@ -112,6 +112,7 @@ async def get_current_officer(
         employee_id=officer.employee_id,
         name=officer.name,
         email=officer.email,
+        designation=officer.designation,  # Add designation for stage filtering
         jurisdiction_type=jurisdiction_data["jurisdiction_type"],
         jurisdiction_name=jurisdiction_data["jurisdiction_name"],
         jurisdiction_ids=all_jurisdiction_ids

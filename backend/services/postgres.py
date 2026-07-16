@@ -73,12 +73,13 @@ async def get_officer_applications(
     db: AsyncSession,
     officer: OfficerContext,
     status: Optional[Any] = None,
-    application_type: Optional[str] = None
+    application_type: Optional[str] = None,
+    submission_year: Optional[int] = None
 ) -> Dict[str, Any]:
     """
     Get applications assigned to officer with optional filters.
-    Filters by assigned_officer_id (direct assignment) so all apps assigned
-    to the officer are returned regardless of geographic jurisdiction.
+    Filters by assigned_officer_id (direct assignment) AND current_stage
+    so only applications in the officer's stage are returned.
     """
     if not officer or not officer.officer_id:
         logger.error("Invalid officer context provided to get_officer_applications")
@@ -87,11 +88,17 @@ async def get_officer_applications(
     try:
         from sqlalchemy.orm import selectinload
 
+        # Get the officer's stage (SIS/DIS/SD/Tahsildar)
+        officer_stage = officer.officer_stage
+        
         query = select(Application).options(
             selectinload(Application.survey_number).selectinload(SurveyNumber.block).selectinload(Block.ward).selectinload(Ward.town).selectinload(Town.taluk).selectinload(Taluk.district),
             selectinload(Application.application_sub_divisions).selectinload(ApplicationSubDivision.sub_division)
         ).where(
-            Application.assigned_officer_id == officer.officer_id
+            and_(
+                Application.assigned_officer_id == officer.officer_id,
+                Application.current_stage == officer_stage  # CRITICAL FIX: Filter by stage
+            )
         )
         
         if status:
@@ -102,6 +109,11 @@ async def get_officer_applications(
         
         if application_type:
             query = query.where(Application.application_type == application_type)
+        
+        # Filter by submission year if provided
+        if submission_year:
+            from sqlalchemy import extract
+            query = query.where(extract('year', Application.submission_date) == submission_year)
         
         result = await db.execute(query)
         applications = result.scalars().all()
@@ -191,12 +203,18 @@ async def get_pending_applications(
     db: AsyncSession,
     officer: OfficerContext,
     application_type: Optional[str] = None,
-    status: Optional[str] = "pending"
+    status: Optional[Any] = None,
+    submission_year: Optional[int] = None
 ) -> Dict[str, Any]:
     """
-    Get applications for officer with optional status (defaults to pending)
+    Get applications for officer with optional status and year filter.
+    By default, returns both 'pending' and 'in_progress' applications.
+    Pass a specific status string or list to filter differently.
+    Pass submission_year to filter by year (e.g., 2025).
     """
-    return await get_officer_applications(db, officer, status=status, application_type=application_type)
+    if status is None:
+        status = ["pending", "in_progress"]
+    return await get_officer_applications(db, officer, status=status, application_type=application_type, submission_year=submission_year)
 
 
 async def get_overdue_applications(
@@ -205,7 +223,7 @@ async def get_overdue_applications(
     application_type: Optional[str] = None
 ) -> Dict[str, Any]:
     """
-    Get overdue applications within officer's jurisdiction
+    Get overdue applications within officer's jurisdiction AND stage
     """
     try:
         # Get jurisdiction filters
@@ -213,6 +231,9 @@ async def get_overdue_applications(
         
         if not jurisdiction_filters:
             return {"count": 0, "applications": [], "message": "No jurisdiction assigned"}
+        
+        # Get the officer's stage
+        officer_stage = officer.officer_stage
         
         query = select(Application).join(
             SurveyNumber, Application.survey_number_id == SurveyNumber.id
@@ -229,6 +250,7 @@ async def get_overdue_applications(
         ).where(
             and_(
                 or_(*jurisdiction_filters),
+                Application.current_stage == officer_stage,  # CRITICAL FIX: Filter by stage
                 Application.is_overdue == True
             )
         )
@@ -266,7 +288,7 @@ async def get_officer_workload(
     officer: OfficerContext
 ) -> Dict[str, Any]:
     """
-    Get officer workload summary for their jurisdiction
+    Get officer workload summary for their jurisdiction AND stage
     """
     try:
         # Get jurisdiction filters
@@ -275,7 +297,10 @@ async def get_officer_workload(
         if not jurisdiction_filters:
             return {"total_active": 0, "ISD": 0, "NISD": 0, "MERGE": 0, "overdue": 0, "message": "No jurisdiction assigned"}
         
-        # Base query with jurisdiction joins
+        # Get the officer's stage
+        officer_stage = officer.officer_stage
+        
+        # Base query with jurisdiction joins AND stage filter
         base_query = select(func.count(Application.id)).join(
             SurveyNumber, Application.survey_number_id == SurveyNumber.id
         ).join(
@@ -289,7 +314,10 @@ async def get_officer_workload(
         ).join(
             District, Taluk.district_id == District.id
         ).where(
-            or_(*jurisdiction_filters)
+            and_(
+                or_(*jurisdiction_filters),
+                Application.current_stage == officer_stage  # CRITICAL FIX: Filter by stage
+            )
         )
         
         # Count by application type
@@ -326,17 +354,29 @@ async def get_officer_workload(
             )
         )
         
+        # Count unscheduled field visits
+        unscheduled_count = await db.execute(
+            base_query.where(
+                and_(
+                    Application.field_visit_scheduled == False,
+                    Application.current_status.in_(["pending", "in_progress"])
+                )
+            )
+        )
+        
         isd_val = isd_count.scalar() or 0
         nisd_val = nisd_count.scalar() or 0
         merge_val = merge_count.scalar() or 0
         overdue_val = overdue_count.scalar() or 0
+        unscheduled_val = unscheduled_count.scalar() or 0
         
         return {
             "total_active": isd_val + nisd_val + merge_val,
             "ISD": isd_val,
             "NISD": nisd_val,
             "MERGE": merge_val,
-            "overdue": overdue_val
+            "overdue": overdue_val,
+            "unscheduled_visits": unscheduled_val
         }
     except Exception as e:
         logger.error(f"Error getting officer workload: {e}")

@@ -1016,7 +1016,9 @@ def parse_intent(message: str) -> str:
         return "escalation_check"
 
     # Field visit specific workflow intents (check before general field_visits)
-    if any(w in msg for w in ["field visit", "inspection", "schedule", "calendar", "visit date",
+    # Match if message contains field visit keywords (as phrase OR separate words)
+    has_field_visit_keywords = (
+        any(w in msg for w in ["field visit", "inspection", "schedule", "calendar", "visit date",
                                "deadline", "15-working-day", "15 working day", "15-day", "working day",
                                # Tamil field visit keywords
                                "கள ஆய்வு", "களஆய்வு", "வருகை", "கள பார்வை",
@@ -1026,14 +1028,21 @@ def parse_intent(message: str) -> str:
                                "காலக்கெடு", "கடந்து விட்டதா", "கடந்துவிட்டதா",
                                "நேர வரம்பு", "15 நாட்கள்",
                                # Display/show keywords (Tamil + English)
-                               "display", "காட்டு", "காண்பி", "பட்டியல்"]):
+                               "display", "காட்டு", "காண்பி", "பட்டியல்"])
+        or (("field" in msg or "visit" in msg or "inspection" in msg) and 
+            not any(w in msg for w in ["application", "survey number"]))
+    )
+    
+    if has_field_visit_keywords:
         if any(w in msg for w in ["date did i select", "select for this", "what date", "which date",
                                    # Tamil: எந்த தேதி
                                    "எந்த தேதி", "தேர்ந்தெடுத்த தேதி"]):
             return "fv_date_select"
-        if any(w in msg for w in ["nearby", "same ward", "close by", "location", "neighborhood",
-                                   # Tamil: அருகில், அதே வார்டு
-                                   "அருகில்", "அதே வார்டு", "பக்கத்தில்"]):
+        if any(w in msg for w in ["nearby", "close by", "location", "neighborhood",
+                                   # Tamil: அருகில்
+                                   "அருகில்", "பக்கத்தில்"]) or \
+           (any(w in msg for w in ["same ward", "அதே வார்டு"]) and 
+            any(w in msg for w in ["field visit", "inspection", "கள ஆய்வு", "வருகை"])):
             return "fv_nearby_pending"
         if any(w in msg for w in ["already have scheduled", "scheduled in this", "scheduled this week",
                                    # Tamil: இந்த வாரம் திட்டமிடப்பட்டது
@@ -1059,10 +1068,25 @@ def parse_intent(message: str) -> str:
                                    "காலக்கெடு", "15 நாட்கள்", "கடந்து விட்டதா", "நேர வரம்பு",
                                    "கடந்துவிட்டதா", "கடந்து விட்டது", "கடந்துவிட்டது"]):
             return "fv_deadline_check"
-        if any(w in msg for w in ["overdue field visits", "exceeded the scheduled", "overdue",
-                                   # Tamil: கடந்த கள ஆய்வுகள்
-                                   "காலதாமதமான கள ஆய்வு", "தாமதமான கள ஆய்வு", "தவறிய கள ஆய்வு"]):
+        
+        # --- ADDED: Specific overdue field visit patterns (check FIRST) ---
+        if any(ph in msg for ph in [
+            "overdue field", "field visit overdue", "overdue visit",
+            "overdue inspection", "past due visit", "missed visit",
+            "show overdue field", "show overdue visit",
+            "கால தாமதமான கள", "தாமதமான கள ஆய்வு"
+        ]):
             return "fv_overdue_inspections"
+        
+        # --- CHANGED: Check for overdue FIELD VISITS before generic overdue ---
+        _is_overdue = any(w in msg for w in ["overdue", "late", "delayed", "காலதாமதமான"])
+        _is_field_visit = any(w in msg for w in ["field visit", "visit", "inspection", 
+                                                   "கள ஆய்வு", "கள்ஆய்வு", "ஆய்வு"])
+        
+        if _is_overdue and _is_field_visit:
+            return "fv_overdue_inspections"
+        # --- END ADDED ---
+        
         if any(w in msg for w in ["unassigned", "not yet been assigned",
                                    "awaiting scheduling", "awaiting schedule",
                                    "no schedule", "without schedule",
@@ -1121,6 +1145,15 @@ def parse_intent(message: str) -> str:
     # 2. Application number pattern → application_status
     if re.search(r'\b(?:ISD|NISD|MERGE)/\w+/\d+/\d+\b|\bAPP-\d+-\d+\b', message, re.IGNORECASE):
         return "application_status"
+
+    # 2-priority. Highest priority — check EARLY to avoid application_status false match
+    # "Show high priority applications" has "show" + "applications" + "priority"
+    # Priority check must come BEFORE application_status field check (which includes "show" in interrogatives)
+    if "priority" in msg and ("week" in msg or "highest" in msg or "high" in msg or "show" in msg or "list" in msg):
+        return "highest_priority_applications"
+    # Tamil: முன்னுரிமை
+    if any(w in msg for w in ["முன்னுரிமை", "அவசர"]) and any(w in msg for w in ["உயர்ந்த", "அதிக", "இந்த வாரம்", "காட்டு", "பட்டியல்"]):
+        return "highest_priority_applications"
 
     # 2a. Field-specific queries (name, address, mobile, email, etc.) → application_status
     # These queries ask about specific applicant/application fields
@@ -1194,13 +1227,6 @@ def parse_intent(message: str) -> str:
     # Tamil: செயலில் உள்ள விண்ணப்பங்கள்
     if any(w in msg for w in ["செயலில்", "சுறுசுறுப்பான"]) and "தாலுகா" in msg:
         return "active_applications_taluks"
-
-    # 8. Highest priority
-    if "priority" in msg and ("week" in msg or "highest" in msg):
-        return "highest_priority_applications"
-    # Tamil: முன்னுரிமை
-    if any(w in msg for w in ["முன்னுரிமை", "அவசர"]) and any(w in msg for w in ["உயர்ந்த", "அதிக", "இந்த வாரம்"]):
-        return "highest_priority_applications"
 
     # 9. Assigned today
     if "assigned" in msg and "today" in msg:
@@ -1363,16 +1389,18 @@ def parse_intent(message: str) -> str:
                                                    "காட்டு", "காண்பி", "பட்டியல்",
                                                    # Tamil: எத்தனை, காண்பி
                                                    "எத்தனை", "உள்ளன"])
-        if is_type_query and is_action_query:
+        if is_type_query and is_action_query and not has(ta_ward):
             return "pending_applications"
-        if is_app_query and (is_action_query or is_type_query):
+        if is_app_query and (is_action_query or is_type_query) and not has(ta_ward):
             return "pending_applications"
         if ("show" in msg or "list" in msg or "display" in msg or "காட்டு" in msg or "பட்டியல்" in msg) and \
            ("all" in msg or "அனைத்தும்" in msg) and \
-           ("application" in msg or "விண்ணப்பம்" in msg or "விண்ணப்பங்கள்" in msg):
+           ("application" in msg or "விண்ணப்பம்" in msg or "விண்ணப்பங்கள்" in msg) and \
+           not has(ta_ward):
             return "pending_applications"
         # Tamil: விண்ணப்பங்கள் பட்டியல் / காட்டு alone also triggers pending_applications
-        if has(ta_application) and has(ta_show):
+        # BUT exclude ward-level queries for block officers (jurisdiction check will handle)
+        if has(ta_application) and has(ta_show) and not has(ta_ward):
             return "pending_applications"
         if has(ta_pending) and not has(ta_ward):
             return "pending_applications"
@@ -1584,3 +1612,4 @@ def extract_district_name(message: str) -> Optional[str]:
         return match.group(1).strip()
 
     return None
+
